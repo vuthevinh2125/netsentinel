@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NetSentinel SOC</title>
+<meta name="description" content="NetSentinel: an AI-assisted mini SOC. Rules, an anomaly model and a beaconing detector find attacks in a simulated company network; an AI analyst investigates each incident with tools and writes the report.">
+<meta property="og:title" content="NetSentinel · AI-assisted mini SOC">
+<meta property="og:description" content="Detects 7/7 injected attacks with 0.4 false alerts a day; an AI analyst triages every incident and explains it in English or Vietnamese.">
+<meta name="theme-color" content="#0a0d12">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a0d12'/%3E%3Cpath d='M32 8l20 8v14c0 13-8.5 22-20 26C20.5 52 12 43 12 30V16z' fill='none' stroke='%2341d7c4' stroke-width='5'/%3E%3Ccircle cx='32' cy='30' r='6' fill='%23ff4d6a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a SOC console. KPI strip, a 7-day timeline, then incident queue (left) and the AI investigation (right), then evaluation. */
+:root{
+  --bg:#0a0d12; --panel:#10151c; --panel2:#151c26; --line:#1f2a37; --fg:#e6edf3; --muted:#8a97a8; --dim:#5b6878;
+  --accent:#41d7c4;           /* sentinel teal */
+  --crit:#ff4d6a; --high:#ff8f3c; --med:#f2c94c; --low:#5aa9ff; --ok:#3ddc97;
+  --display:"Chakra Petch","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.55 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1360px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)}
+.label{font:500 11px/1.2 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+button{font:inherit;color:inherit}
+
+/* header */
+header.top{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#0d1218,var(--bg))}
+header.top .wrap{display:flex;align-items:center;gap:16px;padding-block:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--fg)}
+.brand svg{width:30px;height:30px}
+.brand b{font:700 20px/1 var(--display);letter-spacing:.04em}
+.brand span{font:500 11px/1 var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase;display:block;margin-top:4px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;align-items:center}
+.chip{font:500 12px/1 var(--mono);padding:7px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);white-space:nowrap}
+.chip b{color:var(--fg);font-weight:500}
+.live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:6px;box-shadow:0 0 0 3px rgba(61,220,151,.15)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;padding:7px 11px;font:500 12px/1 var(--mono);color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.ghost{font:500 12px/1 var(--mono);padding:8px 12px;border:1px solid var(--line);border-radius:8px;color:var(--fg);text-decoration:none}
+.ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+/* intro */
+.intro{display:grid;grid-template-columns:1.4fr 1fr;gap:24px;padding-block:28px 8px;align-items:end}
+.intro h1{font:700 clamp(28px,4vw,44px)/1.05 var(--display);margin:0 0 10px;letter-spacing:.01em;text-wrap:balance}
+.intro h1 em{font-style:normal;color:var(--accent)}
+.intro p{margin:0;color:var(--muted);max-width:68ch}
+.pipeline{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.pipeline span{font:500 11px/1 var(--mono);padding:7px 9px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);color:var(--fg)}
+.pipeline i{font-style:normal;color:var(--dim);align-self:center}
+@media (max-width:900px){.intro{grid-template-columns:1fr}.pipeline{justify-content:flex-start}}
+
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding-block:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:4px;min-width:0}
+.kpi .v{font:600 28px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:15px;color:var(--muted)}
+.kpi .s{font-size:12px;color:var(--muted)}
+.kpi.good .v{color:var(--ok)} .kpi.alert .v{color:var(--crit)}
+@media (max-width:1000px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi:last-child{grid-column:span 2}}
+
+/* panels */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;min-width:0}
+.panel>header{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel>header h2{font:600 15px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;margin:0}
+.panel>header .label{margin-left:auto}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-left:auto}
+.legend span{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+/* timeline */
+.tl{position:relative;padding:8px 12px 12px}
+#timeline{display:block;width:100%;height:190px;cursor:crosshair}
+#tip{position:absolute;pointer-events:none;background:#0b1016;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:12px/1.4 var(--mono);color:var(--fg);white-space:nowrap;opacity:0;transition:opacity .12s;z-index:5}
+
+/* main grid */
+.main{display:grid;grid-template-columns:360px minmax(0,1fr);gap:16px;padding-block:16px}
+@media (max-width:980px){.main{grid-template-columns:1fr}}
+.queue{display:grid;gap:10px;padding:12px}
+.inc{position:relative;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px 12px 18px;cursor:pointer;display:grid;gap:8px;transition:border-color .15s,transform .15s}
+.inc:hover{border-color:#2d3b4d}
+.inc[aria-selected="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.inc::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:0 4px 4px 0;background:var(--sev)}
+.inc .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.inc .id{font:500 12px/1 var(--mono);color:var(--muted)}
+.inc h3{font:600 15px/1.3 var(--body);margin:0}
+.inc .meta{font:12px/1.3 var(--mono);color:var(--muted)}
+.sev{font:600 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:4px 6px;border-radius:4px;color:#0a0d12;background:var(--sev)}
+.verdict{font:600 11px/1 var(--mono);padding:4px 7px;border-radius:999px;border:1px solid}
+.verdict.tp{color:var(--crit);border-color:rgba(255,77,106,.45);background:rgba(255,77,106,.08)}
+.verdict.benign{color:var(--ok);border-color:rgba(61,220,151,.4);background:rgba(61,220,151,.07)}
+.verdict.review{color:var(--med);border-color:rgba(242,201,76,.4)}
+.tech{font:500 11px/1 var(--mono);padding:4px 6px;border-radius:4px;background:#0c1118;border:1px solid var(--line);color:var(--muted);text-decoration:none}
+a.tech:hover{color:var(--accent);border-color:var(--accent)}
+
+/* detail */
+.detail>header{align-items:flex-start}
+.detail h2.title{font:600 20px/1.25 var(--display);text-transform:none;letter-spacing:.01em;margin:0}
+.dhead{display:grid;gap:8px;flex:1;min-width:0}
+.tabs{display:flex;gap:4px;padding:8px 12px 0;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{background:transparent;border:0;border-bottom:2px solid transparent;padding:10px 12px;font:500 13px/1 var(--body);color:var(--muted);cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.tabpanel{padding:16px}
+.report{display:grid;gap:18px}
+.summary{font-size:15px;line-height:1.65;margin:0;max-width:85ch}
+.conf{display:flex;align-items:center;gap:10px;font:12px var(--mono);color:var(--muted)}
+.bar{flex:1;max-width:220px;height:6px;background:#0c1118;border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.two{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
+@media (max-width:1100px){.two{grid-template-columns:1fr}}
+.chain{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.chain li{position:relative;padding:0 0 16px 22px;border-left:1px solid var(--line);margin-left:6px}
+.chain li:last-child{padding-bottom:0}
+.chain li::before{content:"";position:absolute;left:-6px;top:3px;width:11px;height:11px;border-radius:50%;background:var(--panel);border:2px solid var(--accent)}
+.chain .when{font:12px var(--mono);color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chain p{margin:4px 0 0}
+.actions{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.actions label{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.actions input{margin-top:3px;accent-color:var(--accent)}
+.actions input:checked+span{color:var(--muted);text-decoration:line-through}
+.actions .n{font:600 11px var(--mono);color:var(--accent);min-width:18px}
+.trace{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.trace li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:start}
+.trace .step{font:600 12px/26px var(--mono);text-align:center;border-radius:8px;background:var(--panel2);border:1px solid var(--line);color:var(--accent)}
+.trace .body{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+.trace code{font:12px/1.5 var(--mono);color:var(--muted);display:block;white-space:pre-wrap;word-break:break-word;margin-top:6px}
+.trace b{font:600 13px var(--mono);color:var(--fg)}
+.trace .submit .step{background:var(--accent);color:#06100f}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.ev{font:12px/1.5 var(--mono);color:var(--muted)}
+.ev b{color:var(--fg);font-weight:500}
+.supp{opacity:.55}
+#graph{display:block;width:100%;height:auto}
+.empty{color:var(--muted);padding:24px}
+
+/* evaluation */
+.evalgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;padding-block:0 16px}
+@media (max-width:1000px){.evalgrid{grid-template-columns:1fr}}
+.heat td.cell{font:600 12px var(--mono);text-align:center;border-radius:6px}
+.heat td{border-bottom:1px solid var(--line)}
+.checks{display:grid;gap:10px;padding:16px}
+.check{display:grid;grid-template-columns:110px 1fr 46px;gap:10px;align-items:center;font-size:13px}
+.check .bar{max-width:none}
+.check .bar i{background:var(--ok)}
+.note{padding:0 16px 16px;color:var(--muted);font-size:12.5px;max-width:80ch}
+footer.foot{border-top:1px solid var(--line);margin-top:8px}
+footer.foot .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between;padding-block:20px;color:var(--muted);font-size:12.5px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#" aria-label="NetSentinel home">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6l22 9v15c0 14-9.4 24-22 28C19.4 54 10 44 10 30V15z" fill="none" stroke="#41d7c4" stroke-width="4"/><circle cx="32" cy="30" r="7" fill="#ff4d6a"/><path d="M18 30h7M39 30h7M32 16v7M32 37v7" stroke="#41d7c4" stroke-width="3" stroke-linecap="round"/></svg>
+      <div><b>NETSENTINEL</b><span data-i18n="tagline">AI-assisted mini SOC</span></div>
+    </a>
+    <div class="chips" id="chips"></div>
+    <div class="seg" role="group" aria-label="Language"><button data-lang="vi" aria-pressed="false">VIE</button><button data-lang="en" aria-pressed="true">ENG</button></div>
+    <a class="ghost" href="https://github.com/vuthevinh2125/netsentinel" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="intro">
+    <div>
+      <h1 data-i18n-html="h1">Seven days of a company network. <em>Seven attacks.</em> One AI analyst.</h1>
+      <p data-i18n="lead">Rules, a per-host anomaly model and a beaconing detector watch flows, logins and DNS. Alerts are chained into incidents, then an AI analyst investigates each one with read-only tools and writes the report, including saying when an alert is a false alarm.</p>
+    </div>
+    <div class="pipeline" aria-label="Pipeline">
+      <span data-i18n="p1">Lab network</span><i>→</i><span data-i18n="p2">Rules + ML + beaconing</span><i>→</i><span data-i18n="p3">Incidents</span><i>→</i><span data-i18n="p4">AI analyst</span><i>→</i><span data-i18n="p5">Report</span>
+    </div>
+  </section>
+
+  <section class="kpis" id="kpis" aria-label="Key figures"></section>
+
+  <section class="panel" aria-labelledby="tl-h">
+    <header>
+      <h2 id="tl-h" data-i18n="timeline">Network activity · 7 days</h2>
+      <div class="legend" id="legend"></div>
+    </header>
+    <div class="tl"><canvas id="timeline" role="img" aria-label="Connections per hour over seven days with incident markers"></canvas><div id="tip"></div></div>
+  </section>
+
+  <section class="main">
+    <aside class="panel" aria-labelledby="q-h">
+      <header><h2 id="q-h" data-i18n="queue">Incident queue</h2><span class="label" id="qcount"></span></header>
+      <div class="queue" id="queue" role="listbox" aria-label="Incidents"></div>
+    </aside>
+    <article class="panel detail" id="detail" aria-live="polite"></article>
+  </section>
+
+  <section class="evalgrid" aria-label="Evaluation">
+    <div class="panel">
+      <header><h2 data-i18n="eval">Does it work? Detector comparison</h2><span class="label" id="seeds"></span></header>
+      <div class="tablewrap"><table class="heat" id="heat"></table></div>
+      <p class="note" data-i18n="evalnote">Each column is a different detector setup, scored on five independently generated networks. Rules miss the slow scan; the model misses brute force and exfiltration; only the hybrid catches everything. Hard negatives (an authorised vulnerability scan, the nightly backup, an admin's software push, a monitoring heartbeat) keep the false-alarm numbers honest.</p>
+    </div>
+    <div class="panel">
+      <header><h2 data-i18n="agenteval">AI analyst evaluation</h2><span class="label" id="aeval"></span></header>
+      <div class="checks" id="checks"></div>
+      <p class="note" data-i18n="agentnote">Every incident is investigated in English and Vietnamese and graded on seven checks against the ground truth. The same harness grades the Claude tool-use analyst when an API key is configured.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span data-i18n="foot1">Built by Vu The Vinh · all network data is simulated, no real organisation's logs are used.</span>
+    <span><a href="https://vuthevinh2125.github.io/portfolio/" target="_blank" rel="noopener">Portfolio</a> · <a href="https://github.com/vuthevinh2125/netsentinel" target="_blank" rel="noopener">Source</a></span>
+  </div>
+</footer>
+
+<script>
+(function(){
+const SEV = {critical:'--crit', high:'--high', medium:'--med', low:'--low'};
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const nf = n => Number(n).toLocaleString('en-US');
+
+const T = {
+  en: {
+    tagline:'AI-assisted mini SOC', h1:'Seven days of a company network. <em>Seven attacks.</em> One AI analyst.',
+    lead:'Rules, a per-host anomaly model and a beaconing detector watch flows, logins and DNS. Alerts are chained into incidents, then an AI analyst investigates each one with read-only tools and writes the report, including saying when an alert is a false alarm.',
+    p1:'Lab network', p2:'Rules + ML + beaconing', p3:'Incidents', p4:'AI analyst', p5:'Report',
+    timeline:'Network activity · 7 days', queue:'Incident queue', eval:'Does it work? Detector comparison', agenteval:'AI analyst evaluation',
+    evalnote:'Each column is a different detector setup, scored on five independently generated networks. Rules miss the slow scan; the model misses brute force and exfiltration; only the hybrid catches everything. Hard negatives (an authorised vulnerability scan, the nightly backup, an admin’s software push, a monitoring heartbeat) keep the false-alarm numbers honest.',
+    agentnote:'Every incident is investigated in English and Vietnamese and graded on seven checks against the ground truth. The same harness grades the Claude tool-use analyst when an API key is configured.',
+    foot1:'Built by Vu The Vinh · all network data is simulated, no real organisation’s logs are used.',
+    hosts:'hosts', host:'host', alert:'alert', days:'days', events:'events', analyst:'analyst',
+    k1:'Real incidents', k1s:'after AI triage', k2:'Attacks detected', k2s:'injected, MITRE-labelled', k3:'False alerts / day', k3s:'across 5 seeded networks', k4:'Events analysed', k4s:'flows, logins, DNS', k5:'AI verdicts correct', k5s:'EN + VI, graded',
+    lgFlows:'connections / hour', lgFail:'failed logins', lgBase:'baseline (learning)', incidents:'incidents',
+    tp:'Threat', benign:'Benign', review:'Review', tabReport:'AI report', tabTrace:'Agent trace', tabAlerts:'Alerts & evidence', tabGraph:'Attack graph',
+    confidence:'confidence', chain:'Attack chain', actions:'Recommended actions', steps:'tool calls', alerts:'alerts',
+    benignWhy:'Why it was closed as benign', when:'Time', detector:'Detector', tech:'Technique', sev:'Severity', who:'Source → targets', evidence:'Evidence',
+    suppressed:'suppressed', metric:'Metric', recall:'Attacks detected', precision:'Alert precision', fpd:'False alerts / day', fpi:'False incidents / run',
+    rules:'rules only', model:'model only', rb:'rules + beaconing', hybrid:'hybrid', seeds:'seeds', score:'score',
+    c_verdict:'verdict', c_severity:'severity', c_iocs:'IOCs named', c_mitre:'MITRE checked', c_method:'method', c_containment:'contain first', c_language:'language',
+    internet:'Internet', more:'more', graphnote:'Arrows follow the order of the alerts. Red nodes are outside the network.'
+  },
+  vi: {
+    tagline:'SOC mini có AI', h1:'7 ngày của một mạng doanh nghiệp. <em>7 cuộc tấn công.</em> Một AI analyst.',
+    lead:'Luật, mô hình bất thường theo từng máy và bộ phát hiện beaconing theo dõi flow, đăng nhập và DNS. Cảnh báo được gom thành sự cố, sau đó AI analyst điều tra từng sự cố bằng các công cụ chỉ-đọc và viết báo cáo, kể cả kết luận khi nào là báo động giả.',
+    p1:'Mạng lab', p2:'Luật + ML + beaconing', p3:'Sự cố', p4:'AI analyst', p5:'Báo cáo',
+    timeline:'Hoạt động mạng · 7 ngày', queue:'Hàng đợi sự cố', eval:'Có hiệu quả không? So sánh bộ phát hiện', agenteval:'Đánh giá AI analyst',
+    evalnote:'Mỗi cột là một cách phát hiện, chấm điểm trên 5 mạng sinh độc lập. Chỉ dùng luật thì sót quét chậm; chỉ dùng mô hình thì sót brute force và rút dữ liệu; chỉ cách kết hợp bắt được tất cả. Các "bẫy" hợp lệ (quét lỗ hổng được phép, backup đêm, admin đẩy phần mềm, agent giám sát) giữ cho số báo nhầm trung thực.',
+    agentnote:'Mỗi sự cố được điều tra bằng tiếng Anh và tiếng Việt, chấm 7 tiêu chí theo đáp án thật. Cùng bộ chấm này dùng để đánh giá Claude agent khi có API key.',
+    foot1:'Vũ Thế Vinh xây dựng · toàn bộ dữ liệu mạng là mô phỏng, không dùng log của tổ chức thật nào.',
+    hosts:'máy', host:'máy', alert:'cảnh báo', days:'ngày', events:'sự kiện', analyst:'analyst',
+    k1:'Sự cố thật', k1s:'sau khi AI phân loại', k2:'Tấn công phát hiện', k2s:'được cài, gắn nhãn MITRE', k3:'Báo nhầm / ngày', k3s:'trên 5 mạng sinh ngẫu nhiên', k4:'Sự kiện đã phân tích', k4s:'flow, đăng nhập, DNS', k5:'AI kết luận đúng', k5s:'Anh + Việt, có chấm điểm',
+    lgFlows:'kết nối / giờ', lgFail:'đăng nhập lỗi', lgBase:'baseline (giai đoạn học)', incidents:'sự cố',
+    tp:'Tấn công', benign:'Vô hại', review:'Cần xem', tabReport:'Báo cáo AI', tabTrace:'Các bước agent', tabAlerts:'Cảnh báo & bằng chứng', tabGraph:'Sơ đồ tấn công',
+    confidence:'độ tin cậy', chain:'Chuỗi tấn công', actions:'Hành động đề xuất', steps:'lần gọi công cụ', alerts:'cảnh báo',
+    benignWhy:'Lý do kết luận vô hại', when:'Thời gian', detector:'Bộ phát hiện', tech:'Kỹ thuật', sev:'Mức độ', who:'Nguồn → đích', evidence:'Bằng chứng',
+    suppressed:'đã bỏ qua', metric:'Chỉ số', recall:'Tấn công phát hiện', precision:'Độ chính xác cảnh báo', fpd:'Báo nhầm / ngày', fpi:'Sự cố giả / lần chạy',
+    rules:'chỉ luật', model:'chỉ mô hình', rb:'luật + beaconing', hybrid:'kết hợp', seeds:'seed', score:'điểm',
+    c_verdict:'kết luận', c_severity:'mức độ', c_iocs:'nêu IOC', c_mitre:'tra MITRE', c_method:'quy trình', c_containment:'cô lập trước', c_language:'ngôn ngữ',
+    internet:'Internet', more:'máy khác', graphnote:'Mũi tên theo thứ tự cảnh báo. Nút đỏ là bên ngoài mạng.'
+  }
+};
+let lang = 'en', B = null, current = null, tab = 'report';
+try { const s = localStorage.getItem('ns-lang'); if (s) lang = s; else if (/^vi\b/i.test(navigator.language||'')) lang = 'vi'; } catch(e) {}
+if (location.hash === '#vi') lang = 'vi';
+const t = k => (T[lang] && T[lang][k]) || T.en[k] || k;
+
+const TECH_SHORT = {'T1046':'Port scan','T1110':'Brute force','T1021.002':'SMB lateral movement','T1071.001':'C2 beaconing','T1071.004':'DNS tunnelling','T1048':'Exfiltration'};
+const TECH_VI = {'T1046':'Quét cổng','T1110':'Brute force','T1021.002':'Di chuyển ngang SMB','T1071.001':'Beaconing C2','T1071.004':'DNS tunneling','T1048':'Rút dữ liệu'};
+const techName = id => (lang === 'vi' ? TECH_VI : TECH_SHORT)[id] || id;
+const report = id => (B.reports[id] || {})[lang] || (B.reports[id] || {}).en;
+const verdictClass = v => v === 'true_positive' ? 'tp' : v === 'benign' ? 'benign' : 'review';
+const verdictText = v => v === 'true_positive' ? t('tp') : v === 'benign' ? t('benign') : t('review');
+const mitreUrl = id => `https://attack.mitre.org/techniques/${id.replace('.', '/')}/`;
+const incTitle = inc => inc.techniques.length ? inc.techniques.map(techName).join(' → ') : 'Anomaly';
+const ordered = techs => { const o=['T1071.001','T1046','T1110','T1021.002','T1071.004','T1048']; return [...techs].sort((a,b)=>o.indexOf(a)-o.indexOf(b)); };
+
+function applyI18n(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+  document.querySelectorAll('[data-i18n-html]').forEach(el => el.innerHTML = t(el.dataset.i18nHtml));
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+  try { localStorage.setItem('ns-lang', lang); } catch(e) {}
+}
+
+function renderChips(){
+  const c = B.counts, ev = c.flows + c.auth + c.dns;
+  $('#chips').innerHTML = `<span class="chip"><span class="live"></span><b>${c.hosts}</b> ${t('hosts')}</span>
+    <span class="chip"><b>${B.meta.days}</b> ${t('days')}</span><span class="chip"><b>${nf(ev)}</b> ${t('events')}</span>
+    <span class="chip">${t('analyst')}: <b>${esc(B.meta.analyst)}</b></span>`;
+}
+
+function renderKpis(){
+  const real = B.incidents.filter(i => (report(i.incident_id)||{}).verdict === 'true_positive').length;
+  const det = B.score.attacks.filter(a => a.detected).length, n = B.score.attacks.length;
+  const hy = B.compare ? B.compare.configs['hybrid (all)'] : null;
+  const fpd = hy ? hy.false_alerts_per_day : B.score.false_alerts_per_day;
+  const ev = B.counts.flows + B.counts.auth + B.counts.dns;
+  const ae = B.agent_eval;
+  const k = [
+    ['alert', `${real}<small> / ${B.incidents.length}</small>`, t('k1'), t('k1s')],
+    ['good', `${det}<small> / ${n}</small>`, t('k2'), t('k2s')],
+    ['', `${fpd}`, t('k3'), t('k3s')],
+    ['', nf(ev), t('k4'), t('k4s')],
+    ['good', `${Math.round(ae.verdict_accuracy*100)}<small>%</small>`, t('k5'), `${t('k5s')} · ${ae.cases}`],
+  ];
+  $('#kpis').innerHTML = k.map(([c,v,l,s]) => `<div class="kpi ${c}"><span class="label">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join('');
+}
+
+/* ---------- timeline ---------- */
+let markers = [];
+function drawTimeline(){
+  const cv = $('#timeline'), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = cv.clientWidth, H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+  const s = B.series, n = s.hours.length, L = 34, R = 8, top = 40, bottom = H - 22, ch = bottom - top;
+  const x = i => L + (W - L - R) * i / n, max = Math.max(...s.flows);
+  const t0 = s.hours[0], span = n * 3600, tx = ts => L + (W - L - R) * (ts - t0) / span;
+  // baseline shading
+  const bx = tx(B.meta.baseline_end);
+  g.fillStyle = 'rgba(65,215,196,0.06)'; g.fillRect(L, top - 8, bx - L, ch + 8);
+  g.fillStyle = css('--accent'); g.font = '500 10px IBM Plex Mono, monospace'; g.fillText(t('lgBase').toUpperCase(), L + 6, top + 4);
+  // grid + day labels
+  g.strokeStyle = css('--line'); g.lineWidth = 1; g.fillStyle = css('--muted'); g.font = '11px IBM Plex Mono, monospace';
+  for (let d = 0; d <= B.meta.days; d++) {
+    const xx = Math.round(x(d * 24)) + .5; g.beginPath(); g.moveTo(xx, top - 8); g.lineTo(xx, bottom); g.stroke();
+    if (d < B.meta.days) { const dt = new Date((t0 + d * 86400 + 7 * 3600) * 1000); g.fillText(dt.toISOString().slice(8,10) + '/' + dt.toISOString().slice(5,7), xx + 4, H - 6); }
+  }
+  [0, .5, 1].forEach(f => { const yy = Math.round(bottom - ch * f) + .5; g.beginPath(); g.moveTo(L, yy); g.lineTo(W - R, yy); g.stroke(); g.fillText(f ? nf(Math.round(max * f)) : '0', 0, yy + 4); });
+  // bars
+  const bw = Math.max(1, (W - L - R) / n - 1);
+  g.fillStyle = '#2b3a4c';
+  s.flows.forEach((v, i) => { const h = ch * v / max; g.fillRect(x(i), bottom - h, bw, h); });
+  // failed logins line
+  const fmax = Math.max(1, ...s.auth_fail);
+  g.strokeStyle = 'rgba(255,143,60,.85)'; g.lineWidth = 1.5; g.beginPath();
+  s.auth_fail.forEach((v, i) => { const xx = x(i) + bw / 2, yy = bottom - ch * 0.9 * v / fmax; i ? g.lineTo(xx, yy) : g.moveTo(xx, yy); }); g.stroke();
+  // incident markers: one lane per incident
+  markers = [];
+  const lanes = B.incidents.slice().sort((a,b)=>a.start-b.start);
+  lanes.forEach((inc, k) => {
+    const y = 8 + (k % 4) * 7, col = css(SEV[inc.severity]);
+    B.alerts.filter(a => a.incident_id === inc.incident_id).forEach(a => {
+      const x1 = tx(a.start), x2 = Math.max(x1 + 4, tx(Math.min(a.end, B.meta.end_ts)));
+      g.globalAlpha = inc.incident_id === current ? 1 : .55; g.fillStyle = col; g.fillRect(x1, y, x2 - x1, 5); g.globalAlpha = 1;
+      markers.push({x1: x1 - 3, x2: x2 + 3, y1: y - 3, y2: y + 8, inc, a});
+    });
+  });
+}
+function timelineHover(e){
+  const cv = $('#timeline'), r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, tip = $('#tip');
+  const m = markers.find(m => mx >= m.x1 && mx <= m.x2 && my >= m.y1 && my <= m.y2);
+  const s = B.series, n = s.hours.length, L = 34, i = Math.floor((mx - L) / ((cv.clientWidth - L - 8) / n));
+  let html = '';
+  if (m) html = `<b>${m.inc.incident_id}</b> · ${esc(techName(m.a.technique === 'anomaly' ? (m.a.evidence.likely_technique || 'anomaly') : m.a.technique))}<br>${esc(m.a.start_local)} · ${esc(m.a.src_ip)}`;
+  else if (i >= 0 && i < n) { const d = new Date((s.hours[i] + 7*3600) * 1000).toISOString(); html = `${d.slice(8,10)}/${d.slice(5,7)} ${d.slice(11,16)}<br>${nf(s.flows[i])} ${t('lgFlows')}<br>${s.auth_fail[i]} ${t('lgFail')}`; }
+  if (!html) { tip.style.opacity = 0; return; }
+  tip.innerHTML = html; tip.style.opacity = 1;
+  const tw = tip.offsetWidth; tip.style.left = Math.min(Math.max(mx + 14, 0), r.width - tw - 4) + 'px'; tip.style.top = (my + 12) + 'px';
+  cv.style.cursor = m ? 'pointer' : 'crosshair';
+}
+function renderLegend(){
+  $('#legend').innerHTML = `<span><i style="background:#2b3a4c"></i>${t('lgFlows')}</span><span><i style="background:rgba(255,143,60,.85);height:2px"></i>${t('lgFail')}</span>
+   <span><i style="background:var(--crit)"></i>critical</span><span><i style="background:var(--high)"></i>high</span><span><i style="background:var(--med)"></i>medium</span>`;
+}
+
+/* ---------- queue ---------- */
+function renderQueue(){
+  $('#qcount').textContent = `${B.incidents.length} ${t('incidents')}`;
+  $('#queue').innerHTML = B.incidents.map(inc => {
+    const r = report(inc.incident_id) || {};
+    const sevVar = css(SEV[inc.severity]);
+    return `<button class="inc" role="option" aria-selected="${inc.incident_id === current}" data-id="${inc.incident_id}" style="--sev:${sevVar}">
+      <div class="row"><span class="sev">${inc.severity}</span><span class="id">${inc.incident_id}</span><span class="verdict ${verdictClass(r.verdict)}" style="margin-left:auto">${verdictText(r.verdict)}</span></div>
+      <h3>${esc(ordered(inc.techniques).map(techName).join(' → ') || 'Anomaly')}</h3>
+      <div class="meta">${esc(inc.start_local)} → ${esc(inc.end_local)} · ${inc.hosts.length} ${t(inc.hosts.length === 1 ? 'host' : 'hosts')} · ${inc.alert_ids.length} ${t(inc.alert_ids.length === 1 ? 'alert' : 'alerts')}</div>
+    </button>`;
+  }).join('');
+}
+
+/* ---------- detail ---------- */
+function renderDetail(){
+  const inc = B.incidents.find(i => i.incident_id === current); if (!inc) return;
+  const r = report(inc.incident_id) || {};
+  const alerts = B.alerts.filter(a => a.incident_id === inc.incident_id).sort((a,b)=>a.start-b.start);
+  const chips = ordered(inc.techniques).map(id => `<a class="tech" href="${mitreUrl(id)}" target="_blank" rel="noopener" title="${esc((B.mitre[id]||{}).name||'')}">${id} · ${esc(techName(id))}</a>`).join(' ');
+  const tabs = [['report', t('tabReport')], ['trace', `${t('tabTrace')} (${(r.trace||[]).length})`], ['alerts', `${t('tabAlerts')} (${alerts.length})`], ['graph', t('tabGraph')]];
+  $('#detail').innerHTML = `
+    <header><div class="dhead">
+      <div class="row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="sev" style="--sev:${css(SEV[inc.severity])}">${inc.severity}</span><span class="id mono muted">${inc.incident_id}</span><span class="verdict ${verdictClass(r.verdict)}">${verdictText(r.verdict)}</span></div>
+      <h2 class="title">${esc(ordered(inc.techniques).map(techName).join(' → ') || 'Anomaly')}</h2>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div>
+    </div></header>
+    <div class="tabs" role="tablist">${tabs.map(([k,l]) => `<button role="tab" aria-selected="${tab === k}" data-tab="${k}">${l}</button>`).join('')}</div>
+    <div class="tabpanel" id="tabpanel"></div>`;
+  const P = $('#tabpanel');
+  if (tab === 'report') {
+    const benign = r.verdict === 'benign';
+    P.innerHTML = `<div class="report">
+      <div class="conf"><span>${t('confidence')}</span><span class="bar"><i style="width:${Math.round((r.confidence||0)*100)}%"></i></span><span>${Math.round((r.confidence||0)*100)}%</span><span>· ${esc(r.analyst)} · ${(r.trace||[]).length} ${t('steps')}</span></div>
+      ${benign ? `<span class="label">${t('benignWhy')}</span>` : ''}
+      <p class="summary">${esc(r.summary)}</p>
+      <div class="two">
+        ${(r.attack_chain||[]).length ? `<div><span class="label">${t('chain')}</span><ol class="chain" style="margin-top:12px">${r.attack_chain.map(c => { const [when, host, tech, text] = c.split(' · '); return `<li><div class="when"><span>${esc(when)}</span><span>${esc(host)}</span><a class="tech" href="${tech && tech.startsWith('T') ? mitreUrl(tech) : '#'}" target="_blank" rel="noopener">${esc(tech)}</a></div><p>${esc(text)}</p></li>`; }).join('')}</ol></div>` : ''}
+        <div><span class="label">${t('actions')}</span><ul class="actions" style="margin-top:12px">${(r.actions||[]).map((a,i) => `<li><label><span class="n">${String(i+1).padStart(2,'0')}</span><input type="checkbox" id="act-${inc.incident_id}-${i}"><span>${esc(a)}</span></label></li>`).join('')}</ul></div>
+      </div></div>`;
+  } else if (tab === 'trace') {
+    P.innerHTML = `<ol class="trace">${(r.trace||[]).map(s => `<li class="${s.tool === 'submit_report' ? 'submit' : ''}"><span class="step">${s.step}</span><div class="body"><b>${esc(s.tool)}</b> <span class="mono muted">(${esc(JSON.stringify(s.input))})</span><code>${esc(typeof s.output === 'string' ? s.output : JSON.stringify(s.output))}</code></div></li>`).join('')}</ol>`;
+  } else if (tab === 'alerts') {
+    P.innerHTML = `<div class="tablewrap"><table><thead><tr><th>${t('when')}</th><th>${t('detector')}</th><th>${t('tech')}</th><th>${t('sev')}</th><th>${t('who')}</th><th>${t('evidence')}</th></tr></thead><tbody>
+      ${alerts.map(a => { const tech = a.technique === 'anomaly' ? (a.evidence.likely_technique ? a.evidence.likely_technique + '?' : 'anomaly') : a.technique;
+        const ev = Object.entries(a.evidence).filter(([k,v]) => typeof v !== 'object' || v === null).slice(0, 7).map(([k,v]) => `${esc(k)}: <b>${esc(v)}</b>`).join('<br>');
+        const dev = a.evidence.top_deviations ? '<br>' + Object.entries(a.evidence.top_deviations).map(([k,v]) => `${esc(k)}: <b>${v}σ</b>`).join(' · ') : '';
+        return `<tr class="${a.suppressed ? 'supp' : ''}"><td class="mono">${esc(a.start_local)}</td><td class="mono">${esc(a.detector)}</td><td><span class="tech">${esc(tech)}</span></td><td><span class="sev" style="--sev:${css(SEV[a.severity])}">${a.severity}</span></td><td class="mono">${esc(a.src_ip)} → ${esc((a.targets||[]).slice(0,3).join(', '))}${(a.targets||[]).length > 3 ? ` +${a.targets.length - 3}` : ''}</td><td class="ev">${ev}${dev}</td></tr>`; }).join('')}
+      </tbody></table></div>`;
+  } else {
+    P.innerHTML = `<svg id="graph" role="img" aria-label="Attack graph"></svg><p class="muted" style="font-size:12px;margin:8px 0 0">${t('graphnote')}</p>`;
+    drawGraph(alerts);
+  }
+  P.querySelectorAll && 0;
+}
+
+function drawGraph(alerts){
+  const svg = $('#graph'); const W = svg.clientWidth || 800;
+  const internal = ip => /^10\./.test(ip);
+  const layer = {}, order = [];
+  const add = (id, L) => { if (!(id in layer)) { layer[id] = L; order.push(id); } };
+  const edges = [];
+  alerts.forEach(a => {
+    if (!(a.src_ip in layer)) add(a.src_ip, internal(a.src_ip) ? (Object.keys(layer).length ? 1 : 0) : 0);
+    const tg = a.targets || [];
+    const shown = tg.slice(0, 5);
+    shown.forEach(tg1 => { add(tg1, internal(tg1) ? Math.min(layer[a.src_ip] + 1, 3) : 4); edges.push([a.src_ip, tg1, a]); });
+    if (tg.length > 5) { const id = `+${tg.length - 5} ${t('more')}·${a.alert_id}`; add(id, Math.min(layer[a.src_ip] + 1, 3)); edges.push([a.src_ip, id, a]); }
+  });
+  const cols = {}; order.forEach(id => (cols[layer[id]] = cols[layer[id]] || []).push(id));
+  const maxRows = Math.max(...Object.values(cols).map(c => c.length));
+  const H = Math.max(240, maxRows * 62 + 70), colX = L => 70 + (W - 140) * L / 4;
+  const pos = {};
+  Object.entries(cols).forEach(([L, ids]) => ids.forEach((id, i) => pos[id] = [colX(+L), 40 + (H - 80) * (ids.length === 1 ? .5 : i / (ids.length - 1))]));
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.style.height = H + 'px';
+  const host = ip => (B.hosts.find(h => h.ip === ip) || {}).hostname;
+  let out = '<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5b6878"/></marker></defs>';
+  edges.forEach(([a, b, al]) => { const [x1,y1] = pos[a], [x2,y2] = pos[b], mx = (x1 + x2) / 2; const col = css(SEV[al.severity]);
+    out += `<path d="M${x1+14} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2-16} ${y2}" fill="none" stroke="${col}" stroke-opacity=".55" stroke-width="1.6" marker-end="url(#arr)"/>`; });
+  const seenLabel = {};
+  edges.forEach(([a, b, al]) => { const key = a + al.technique; if (seenLabel[key]) return; seenLabel[key] = 1; const [x1,y1] = pos[a], [x2,y2] = pos[b];
+    const tech = al.technique === 'anomaly' ? (al.evidence.likely_technique || 'anomaly') : al.technique;
+    out += `<text x="${(x1+x2)/2}" y="${(y1+y2)/2 - 6}" text-anchor="middle" fill="#8a97a8" font-family="IBM Plex Mono, monospace" font-size="10">${esc(techName(tech))}</text>`; });
+  order.forEach(id => { const [x,y] = pos[id]; const ext = !internal(id) && !id.startsWith('+'); const fill = ext ? 'rgba(255,77,106,.15)' : '#151c26', stroke = ext ? '#ff4d6a' : '#41d7c4';
+    out += `<g><circle cx="${x}" cy="${y}" r="13" fill="${fill}" stroke="${id.startsWith('+') ? '#5b6878' : stroke}" stroke-width="1.6"/>
+      <text x="${x}" y="${y + 28}" text-anchor="middle" fill="#e6edf3" font-family="IBM Plex Mono, monospace" font-size="11">${esc(id.split('·')[0])}</text>
+      ${host(id) ? `<text x="${x}" y="${y + 41}" text-anchor="middle" fill="#8a97a8" font-family="IBM Plex Mono, monospace" font-size="10">${esc(host(id))}</text>` : ''}</g>`; });
+  svg.innerHTML = out;
+}
+
+/* ---------- evaluation ---------- */
+function renderEval(){
+  if (B.compare) {
+    const C = B.compare.configs, names = ['rules only','model only','rules + beaconing','hybrid (all)'], lab = [t('rules'), t('model'), t('rb'), t('hybrid')];
+    $('#seeds').textContent = `${B.compare.seeds.length} ${t('seeds')}`;
+    const pct = v => Math.round(v * 100) + '%';
+    const cell = v => { const h = v >= .99 ? 'rgba(61,220,151,.22)' : v >= .5 ? 'rgba(242,201,76,.18)' : 'rgba(255,77,106,.18)'; const c = v >= .99 ? 'var(--ok)' : v >= .5 ? 'var(--med)' : 'var(--crit)'; return `<td class="cell" style="background:${h};color:${c}">${pct(v)}</td>`; };
+    let h = `<thead><tr><th>${t('metric')}</th>${lab.map((l,i) => `<th class="num" ${i === 3 ? 'style="color:var(--accent)"' : ''}>${l}</th>`).join('')}</tr></thead><tbody>`;
+    h += `<tr><td>${t('recall')}</td>${names.map(n => cell(C[n].attack_recall)).join('')}</tr>`;
+    h += `<tr><td>${t('precision')}</td>${names.map(n => `<td class="num mono">${pct(C[n].alert_precision)}</td>`).join('')}</tr>`;
+    h += `<tr><td>${t('fpd')}</td>${names.map(n => `<td class="num mono">${C[n].false_alerts_per_day}</td>`).join('')}</tr>`;
+    Object.keys(C[names[0]].per_technique_recall).forEach(k => {
+      const [id, ...rest] = k.split(' '); const atk = B.attacks.find(a => a.attack_id === id);
+      h += `<tr><td><span class="mono muted">${id}</span> ${esc(atk ? techName(atk.technique) + (atk.attack_id === 'A3' ? (lang === 'vi' ? ' (chậm)' : ' (slow)') : atk.attack_id === 'A2' ? (lang === 'vi' ? ' (nhanh)' : ' (fast)') : '') : rest.join(' '))}</td>${names.map(n => cell(C[n].per_technique_recall[k])).join('')}</tr>`;
+    });
+    $('#heat').innerHTML = h + '</tbody>';
+  }
+  const ae = B.agent_eval;
+  $('#aeval').textContent = `${ae.cases} cases · ${t('score')} ${Math.round(ae.score * 100)}%`;
+  $('#checks').innerHTML = Object.entries(ae.by_check).map(([k,v]) => `<div class="check"><span>${t('c_' + k)}</span><span class="bar"><i style="width:${v*100}%"></i></span><span class="mono" style="text-align:right">${Math.round(v*100)}%</span></div>`).join('');
+}
+
+function renderAll(){ applyI18n(); renderChips(); renderKpis(); renderLegend(); renderQueue(); renderDetail(); renderEval(); drawTimeline(); }
+
+document.addEventListener('click', e => {
+  const inc = e.target.closest('.inc'); if (inc) { current = inc.dataset.id; tab = 'report'; renderQueue(); renderDetail(); drawTimeline(); if (window.innerWidth < 980) $('#detail').scrollIntoView({behavior:'smooth', block:'start'}); return; }
+  const tb = e.target.closest('[data-tab]'); if (tb) { tab = tb.dataset.tab; renderDetail(); return; }
+  const lb = e.target.closest('.seg button'); if (lb) { lang = lb.dataset.lang; renderAll(); return; }
+});
+document.addEventListener('keydown', e => {
+  if (!e.target.closest || !e.target.closest('.queue')) return;
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  const ids = B.incidents.map(i => i.incident_id), k = ids.indexOf(current) + (e.key === 'ArrowDown' ? 1 : -1);
+  if (k >= 0 && k < ids.length) { current = ids[k]; renderQueue(); renderDetail(); drawTimeline(); document.querySelector(`.inc[data-id="${current}"]`).focus(); e.preventDefault(); }
+});
+const cv = $('#timeline');
+cv.addEventListener('mousemove', timelineHover);
+cv.addEventListener('mouseleave', () => $('#tip').style.opacity = 0);
+cv.addEventListener('click', e => { const r = cv.getBoundingClientRect(); const m = markers.find(m => e.clientX - r.left >= m.x1 && e.clientX - r.left <= m.x2 && e.clientY - r.top >= m.y1 && e.clientY - r.top <= m.y2); if (m) { current = m.inc.incident_id; tab = 'report'; renderQueue(); renderDetail(); drawTimeline(); } });
+let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { drawTimeline(); if (tab === 'graph') renderDetail(); }, 150); });
+
+const src = (window.NETSENTINEL_DATA_URL || 'data/demo.json');
+fetch(src).then(r => r.json()).then(b => { B = b; current = B.incidents[0] && B.incidents[0].incident_id; renderAll(); })
+  .catch(err => { $('#detail').innerHTML = `<p class="empty">Could not load ${esc(src)}: ${esc(err.message)}. Run <code>python -m netsentinel run</code> first.</p>`; });
+})();
+</script>
+</body>
+</html>
