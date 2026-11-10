@@ -3,6 +3,7 @@
   run         simulate the lab, detect, investigate every incident, write a JSON bundle
   compare     score rules / model / beaconing / hybrid on several seeds
   agent-eval  grade an analyst (playbook, or Claude if ANTHROPIC_API_KEY is set)
+  real-eval   run the detectors on real labelled captures (Stratosphere Lab, CTU Prague)
 """
 from __future__ import annotations
 
@@ -103,6 +104,9 @@ def main(argv=None) -> int:
     e = sub.add_parser("agent-eval", help="grade an analyst on the lab incidents")
     e.add_argument("--analyst", choices=["auto", "playbook", "claude"], default="auto")
     e.add_argument("--seed", type=int, default=7)
+    rv = sub.add_parser("real-eval", help="evaluate on real labelled Zeek captures")
+    rv.add_argument("--data", default="data/stratosphere", help="folder from scripts/fetch_stratosphere.sh")
+    rv.add_argument("--out", default="docs/data/real.json")
     a = p.parse_args(argv)
 
     if a.cmd == "run":
@@ -124,6 +128,14 @@ def main(argv=None) -> int:
         print(f"analyst={res['analyst']} cases={res['cases']} score={res['score']:.0%} verdicts={res['verdict_accuracy']:.0%}")
         for k, v in res["by_check"].items():
             print(f"  {k:12s} {v:.0%}")
+    elif a.cmd == "real-eval":
+        from .datasets import realeval
+        res = realeval.run_all(a.data, verbose=True)
+        out = Path(a.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(res, ensure_ascii=False, indent=1, default=_py), encoding="utf-8")
+        print(realeval.markdown(res))
+        print(f"-> {out}")
     return 0
 
 

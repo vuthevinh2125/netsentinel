@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import IsolationForest
 
-from .features import MODEL_FEATURES, WINDOW, host_windows, is_internal
+from .features import MODEL_FEATURES, set_home_hosts, WINDOW, external_mask, host_windows, internal_mask, is_external, is_internal
 from .simulate import DAY, TECHNIQUES, LabData, entropy
 
 SEVERITY = {"low": 1, "medium": 2, "high": 3, "critical": 4}
@@ -182,7 +182,7 @@ def rule_dns_tunnel(dns: pd.DataFrame, ids: _Ids) -> list[Alert]:
 
 
 def rule_exfil(flows: pd.DataFrame, known_external: set[str], ids: _Ids) -> list[Alert]:
-    big = flows[(flows.bytes_out >= 100_000_000) & (~flows.dst_ip.map(is_internal))]
+    big = flows[(flows.bytes_out >= 100_000_000) & external_mask(flows.dst_ip)]
     alerts = []
     for _, r in big.iterrows():
         new_dst = r.dst_ip not in known_external
@@ -199,7 +199,7 @@ def rule_exfil(flows: pd.DataFrame, known_external: set[str], ids: _Ids) -> list
 # ------------------------------------------------------------ beaconing
 def detect_beaconing(flows: pd.DataFrame, known_external: set[str], ids: _Ids, baseline_end: float | None = None) -> list[Alert]:
     """Regular call-home traffic: many small connections to one rare external host at a steady rhythm."""
-    f = flows[flows.src_ip.map(is_internal) & ~flows.dst_ip.map(is_internal)]
+    f = flows[internal_mask(flows.src_ip) & external_mask(flows.dst_ip)]
     pop = f.groupby("dst_ip").src_ip.nunique()
     alerts = []
     for (src, dst), grp in f.groupby(["src_ip", "dst_ip"]):
@@ -374,9 +374,10 @@ class DetectionResult:
 
 
 def run(data: LabData, use_rules: bool = True, use_model: bool = True, use_beacon: bool = True) -> DetectionResult:
+    set_home_hosts(data.meta.get("home_hosts", ()))
     baseline_end = data.meta["start_ts"] + data.meta["baseline_days"] * DAY
     known_external = set(data.flows.loc[data.flows.ts < baseline_end, "dst_ip"])
-    known_external = {ip for ip in known_external if not is_internal(ip)}
+    known_external = {ip for ip in known_external if is_external(ip)}
     ids = _Ids()
     alerts: list[Alert] = []
     if use_rules:
@@ -388,10 +389,13 @@ def run(data: LabData, use_rules: bool = True, use_model: bool = True, use_beaco
     if use_beacon:
         alerts += detect_beaconing(data.flows, known_external, ids, baseline_end)
     win = host_windows(data.flows, data.auth, data.dns, known_external)
-    if use_model:
+    # The model needs a clean baseline to compare each host with; captures that start
+    # already infected have none, so the model is skipped there and reported as such.
+    model_ran = bool(use_model and (win.win < baseline_end).sum() >= 50)
+    if model_ran:
         model_alerts, win = anomaly_model(win, baseline_end, ids)
         alerts += model_alerts
     alerts.sort(key=lambda a: a.start)
     incidents = group_incidents(alerts)
-    cfg = {"rules": use_rules, "model": use_model, "beaconing": use_beacon, "baseline_end": baseline_end}
+    cfg = {"rules": use_rules, "model": use_model, "model_ran": model_ran, "beaconing": use_beacon, "baseline_end": baseline_end}
     return DetectionResult(alerts, incidents, win, cfg)

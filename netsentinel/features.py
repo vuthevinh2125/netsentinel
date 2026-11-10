@@ -1,6 +1,9 @@
 """Turn raw logs into per-host, per-window behaviour features."""
 from __future__ import annotations
 
+import ipaddress
+from functools import lru_cache
+
 import numpy as np
 import pandas as pd
 
@@ -36,8 +39,54 @@ MODEL_FEATURES = [
 ]
 
 
+# Addresses that belong to the monitored network even though they are publicly routable
+# (the equivalent of HOME_NET in Suricata / Zeek's Site::local_nets).
+HOME_HOSTS: frozenset[str] = frozenset()
+
+
+def set_home_hosts(hosts) -> None:
+    global HOME_HOSTS
+    new = frozenset(hosts or ())
+    if new != HOME_HOSTS:
+        HOME_HOSTS = new
+        is_internal.cache_clear()
+        is_external.cache_clear()
+
+
+@lru_cache(maxsize=200_000)
 def is_internal(ip: str) -> bool:
-    return ip.startswith("10.")
+    """Private address space (RFC 1918, IPv6 unique-local / link-local) and declared home hosts."""
+    if ip in HOME_HOSTS:
+        return True
+    try:
+        a = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return a.is_private and not (a.is_loopback or a.is_multicast or a.is_unspecified or a.is_reserved)
+
+
+@lru_cache(maxsize=200_000)
+def is_external(ip: str) -> bool:
+    """A real Internet host: globally routable unicast. Multicast, broadcast and
+    link-local traffic (mDNS, SSDP, IPv6 neighbour discovery) is neither inside nor outside."""
+    if ip in HOME_HOSTS:
+        return False
+    try:
+        a = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return a.is_global and not a.is_multicast
+
+
+def external_mask(ips) -> pd.Series:
+    s = pd.Series(ips)
+    return pd.Series(np.fromiter((is_external(str(x)) for x in s), dtype=bool, count=len(s)), index=s.index)
+
+
+def internal_mask(ips) -> pd.Series:
+    """Boolean mask of internal addresses (works with any pandas string dtype)."""
+    s = pd.Series(ips)
+    return pd.Series(np.fromiter((is_internal(str(x)) for x in s), dtype=bool, count=len(s)), index=s.index)
 
 
 def window_of(ts: pd.Series) -> pd.Series:
@@ -46,12 +95,12 @@ def window_of(ts: pd.Series) -> pd.Series:
 
 def host_windows(flows: pd.DataFrame, auth: pd.DataFrame, dns: pd.DataFrame, known_external: set[str]) -> pd.DataFrame:
     """One row per (internal source host, 5-minute window) with behaviour features."""
-    f = flows[flows.src_ip.map(is_internal)].copy()
+    f = flows[internal_mask(flows.src_ip)].copy()
     f["win"] = window_of(f.ts)
-    f["internal_dst"] = f.dst_ip.map(is_internal)
+    f["internal_dst"] = internal_mask(f.dst_ip)
     f["zero"] = (f.bytes_in == 0).astype(int)
     f["pair"] = f.dst_ip + ":" + f.dst_port.astype(str)
-    f["ext_new"] = (~f.internal_dst) & (~f.dst_ip.isin(known_external))
+    f["ext_new"] = external_mask(f.dst_ip) & (~f.dst_ip.isin(known_external))
     g = f.groupby(["src_ip", "win"])
     internal = f[f.internal_dst].groupby(["src_ip", "win"]).dst_ip.nunique()
     smb = f[f.dst_port == 445].groupby(["src_ip", "win"]).dst_ip.nunique()
@@ -69,7 +118,7 @@ def host_windows(flows: pd.DataFrame, auth: pd.DataFrame, dns: pd.DataFrame, kno
         "ext_new_dst": ext_new,
     }).fillna(0.0)
 
-    a = auth[auth.src_ip.map(is_internal)].copy()
+    a = auth[internal_mask(auth.src_ip)].copy()
     a["win"] = window_of(a.ts)
     af = a[a.result == "failure"].groupby(["src_ip", "win"]).size().rename("auth_fail")
 

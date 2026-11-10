@@ -68,7 +68,7 @@ header.top .wrap{display:flex;align-items:center;gap:16px;padding-block:14px;fle
 .kpi .v small{font-size:15px;color:var(--muted)}
 .kpi .s{font-size:12px;color:var(--muted)}
 .kpi.good .v{color:var(--ok)} .kpi.alert .v{color:var(--crit)}
-@media (max-width:1000px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi:last-child{grid-column:span 2}}
+@media (max-width:1000px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis .kpi:last-child{grid-column:span 2}}
 
 /* panels */
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;min-width:0}
@@ -157,6 +157,16 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .check{display:grid;grid-template-columns:110px 1fr 46px;gap:10px;align-items:center;font-size:13px}
 .check .bar{max-width:none}
 .check .bar i{background:var(--ok)}
+.real{margin-bottom:16px}
+.realkpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:16px}
+@media (max-width:760px){.realkpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.realkpis .kpi{border:1px solid var(--line);border-radius:10px;padding:12px}
+.realgrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;padding:0 16px 16px}
+@media (max-width:1000px){.realgrid{grid-template-columns:1fr}}
+.realnotes{font-size:13px;line-height:1.6;color:var(--muted)}
+.realnotes b{color:var(--text)}
+.realnotes ul{margin:6px 0 10px;padding-left:18px}
+.pill{display:inline-block;font:600 11px var(--mono);padding:2px 8px;border-radius:999px}
 .note{padding:0 16px 16px;color:var(--muted);font-size:12.5px;max-width:80ch}
 footer.foot{border-top:1px solid var(--line);margin-top:8px}
 footer.foot .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between;padding-block:20px;color:var(--muted);font-size:12.5px}
@@ -217,11 +227,20 @@ footer.foot .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-bet
       <p class="note" data-i18n="agentnote">Every incident is investigated in English and Vietnamese and graded on seven checks against the ground truth. The same harness grades the Claude tool-use analyst when an API key is configured.</p>
     </div>
   </section>
+
+  <section class="panel real" id="real" aria-labelledby="real-h" hidden>
+    <header><h2 id="real-h" data-i18n="realh">Real traffic: public malware captures</h2><span class="label" id="realsrc"></span></header>
+    <div class="realkpis" id="realkpis"></div>
+    <div class="realgrid">
+      <div class="tablewrap"><table id="realtab"></table></div>
+      <div class="realnotes" id="realnotes"></div>
+    </div>
+  </section>
 </main>
 
 <footer class="foot">
   <div class="wrap">
-    <span data-i18n="foot1">Built by Vu The Vinh · all network data is simulated, no real organisation's logs are used.</span>
+    <span data-i18n="foot1">Built by Vu The Vinh · lab data is simulated; the real-traffic evaluation uses public research captures, no organisation's private logs.</span>
     <span><a href="https://vuthevinh2125.github.io/portfolio/" target="_blank" rel="noopener">Portfolio</a> · <a href="https://github.com/vuthevinh2125/netsentinel" target="_blank" rel="noopener">Source</a></span>
   </div>
 </footer>
@@ -242,7 +261,7 @@ const T = {
     timeline:'Network activity · 7 days', queue:'Incident queue', eval:'Does it work? Detector comparison', agenteval:'AI analyst evaluation',
     evalnote:'Each column is a different detector setup, scored on five independently generated networks. Rules miss the slow scan; the model misses brute force and exfiltration; only the hybrid catches everything. Hard negatives (an authorised vulnerability scan, the nightly backup, an admin’s software push, a monitoring heartbeat) keep the false-alarm numbers honest.',
     agentnote:'Every incident is investigated in English and Vietnamese and graded on seven checks against the ground truth. The same harness grades the Claude tool-use analyst when an API key is configured.',
-    foot1:'Built by Vu The Vinh · all network data is simulated, no real organisation’s logs are used.',
+    foot1:'Built by Vu The Vinh · lab data is simulated; the real-traffic evaluation uses public research captures, no organisation’s private logs.',
     hosts:'hosts', host:'host', alert:'alert', days:'days', events:'events', analyst:'analyst',
     k1:'Real incidents', k1s:'after AI triage', k2:'Attacks detected', k2s:'injected, MITRE-labelled', k3:'False alerts / day', k3s:'across 5 seeded networks', k4:'Events analysed', k4s:'flows, logins, DNS', k5:'AI verdicts correct', k5s:'EN + VI, graded',
     lgFlows:'connections / hour', lgFail:'failed logins', lgBase:'baseline (learning)', incidents:'incidents',
@@ -252,7 +271,17 @@ const T = {
     suppressed:'suppressed', metric:'Metric', recall:'Attacks detected', precision:'Alert precision', fpd:'False alerts / day', fpi:'False incidents / run',
     rules:'rules only', model:'model only', rb:'rules + beaconing', hybrid:'hybrid', seeds:'seeds', score:'score',
     c_verdict:'verdict', c_severity:'severity', c_iocs:'IOCs named', c_mitre:'MITRE checked', c_method:'method', c_containment:'contain first', c_language:'language',
-    internet:'Internet', more:'more', graphnote:'Arrows follow the order of the alerts. Red nodes are outside the network.'
+    internet:'Internet', more:'more', graphnote:'Arrows follow the order of the alerts. Red nodes are outside the network.',
+    realh:'Real traffic: public malware captures', fam:'Malware family', hostdays:'Infected host-days', detected:'Detected', talerts:'True / all alerts',
+    r1:'Infected host-days detected', r2:'Alert precision', r3:'False alerts / day', r4:'Flows analysed', r4s:'hours of real traffic',
+    r1s:'5 malware families', r2s:'graded with the lab’s own labels', r3s:'0 on the clean days',
+    realnotes:`<p><b>What this is.</b> The same detectors and thresholds, with one bug fix and the monitored machine declared as part of the network (like HOME_NET in Suricata), run on {caps} real Zeek captures from the Stratosphere Laboratory (Czech Technical University). Each capture is about a day of a Windows machine infected with known malware, or left clean on the Internet. Every flow carries the lab’s own label, used only for grading.</p>
+<p><b>What real data taught us.</b> The first run had 34% precision and 12.5 false alerts a day: IPv6 neighbour discovery multicast was being treated as an Internet host. The simulated lab has no IPv6, so it never showed. After fixing address classification, the figures on this panel are what remains.</p>
+<p><b>Where it still fails, honestly.</b></p><ul>
+<li>Cridex: 1 of 5 days. Its C2 traffic is jittery and varied in size, like normal HTTPS. A size-regularity check caught it but also flagged Microsoft telemetry, so it was not shipped.</li>
+<li>The {fp} false alerts are mostly BitTorrent retrying peers, cloud sync and telemetry (Dropbox, Microsoft, AWS) and NTP. That is the queue the AI analyst exists to triage.</li>
+<li>Slow scans from the Internet against a single machine: 1 of 6 days caught.</li>
+<li>The anomaly model is not used here: a capture that starts already infected has no clean baseline to learn from.</li></ul>`
   },
   vi: {
     tagline:'SOC mini có AI', h1:'7 ngày của một mạng doanh nghiệp. <em>7 cuộc tấn công.</em> Một AI analyst.',
@@ -261,7 +290,7 @@ const T = {
     timeline:'Hoạt động mạng · 7 ngày', queue:'Hàng đợi sự cố', eval:'Có hiệu quả không? So sánh bộ phát hiện', agenteval:'Đánh giá AI analyst',
     evalnote:'Mỗi cột là một cách phát hiện, chấm điểm trên 5 mạng sinh độc lập. Chỉ dùng luật thì sót quét chậm; chỉ dùng mô hình thì sót brute force và rút dữ liệu; chỉ cách kết hợp bắt được tất cả. Các "bẫy" hợp lệ (quét lỗ hổng được phép, backup đêm, admin đẩy phần mềm, agent giám sát) giữ cho số báo nhầm trung thực.',
     agentnote:'Mỗi sự cố được điều tra bằng tiếng Anh và tiếng Việt, chấm 7 tiêu chí theo đáp án thật. Cùng bộ chấm này dùng để đánh giá Claude agent khi có API key.',
-    foot1:'Vũ Thế Vinh xây dựng · toàn bộ dữ liệu mạng là mô phỏng, không dùng log của tổ chức thật nào.',
+    foot1:'Vũ Thế Vinh xây dựng · dữ liệu lab là mô phỏng; phần dữ liệu thật dùng bản ghi nghiên cứu công khai, không dùng log riêng của tổ chức nào.',
     hosts:'máy', host:'máy', alert:'cảnh báo', days:'ngày', events:'sự kiện', analyst:'analyst',
     k1:'Sự cố thật', k1s:'sau khi AI phân loại', k2:'Tấn công phát hiện', k2s:'được cài, gắn nhãn MITRE', k3:'Báo nhầm / ngày', k3s:'trên 5 mạng sinh ngẫu nhiên', k4:'Sự kiện đã phân tích', k4s:'flow, đăng nhập, DNS', k5:'AI kết luận đúng', k5s:'Anh + Việt, có chấm điểm',
     lgFlows:'kết nối / giờ', lgFail:'đăng nhập lỗi', lgBase:'baseline (giai đoạn học)', incidents:'sự cố',
@@ -271,7 +300,17 @@ const T = {
     suppressed:'đã bỏ qua', metric:'Chỉ số', recall:'Tấn công phát hiện', precision:'Độ chính xác cảnh báo', fpd:'Báo nhầm / ngày', fpi:'Sự cố giả / lần chạy',
     rules:'chỉ luật', model:'chỉ mô hình', rb:'luật + beaconing', hybrid:'kết hợp', seeds:'seed', score:'điểm',
     c_verdict:'kết luận', c_severity:'mức độ', c_iocs:'nêu IOC', c_mitre:'tra MITRE', c_method:'quy trình', c_containment:'cô lập trước', c_language:'ngôn ngữ',
-    internet:'Internet', more:'máy khác', graphnote:'Mũi tên theo thứ tự cảnh báo. Nút đỏ là bên ngoài mạng.'
+    internet:'Internet', more:'máy khác', graphnote:'Mũi tên theo thứ tự cảnh báo. Nút đỏ là bên ngoài mạng.',
+    realh:'Dữ liệu thật: bản ghi mã độc công khai', fam:'Họ mã độc', hostdays:'Ngày-máy bị nhiễm', detected:'Phát hiện', talerts:'Đúng / tổng cảnh báo',
+    r1:'Ngày-máy nhiễm bị phát hiện', r2:'Độ chính xác cảnh báo', r3:'Báo nhầm / ngày', r4:'Flow đã phân tích', r4s:'giờ lưu lượng thật',
+    r1s:'5 họ mã độc', r2s:'chấm bằng nhãn của chính phòng lab', r3s:'0 trên các ngày sạch',
+    realnotes:`<p><b>Đây là gì.</b> Vẫn các bộ phát hiện và ngưỡng đó, chỉ sửa một lỗi và khai báo máy được giám sát thuộc mạng nội bộ (như HOME_NET trong Suricata), chạy trên {caps} bản ghi Zeek thật của phòng lab Stratosphere (Đại học Kỹ thuật Séc). Mỗi bản ghi là khoảng một ngày của một máy Windows nhiễm mã độc đã biết, hoặc máy sạch để mở trên Internet. Mỗi flow có nhãn của chính phòng lab, chỉ dùng để chấm điểm.</p>
+<p><b>Dữ liệu thật dạy được gì.</b> Lần chạy đầu chỉ đạt độ chính xác 34% với 12,5 báo nhầm/ngày: gói multicast khám phá thiết bị IPv6 bị coi là máy trên Internet. Lab mô phỏng không có IPv6 nên lỗi này không lộ ra. Sau khi sửa cách phân loại địa chỉ, kết quả còn lại là các số trong phần này.</p>
+<p><b>Chỗ còn yếu, nói thẳng.</b></p><ul>
+<li>Cridex: chỉ bắt được 1/5 ngày. C2 của nó lệch nhịp và đổi kích thước như HTTPS bình thường. Kiểm tra độ đều kích thước bắt được nó nhưng cũng báo nhầm telemetry của Microsoft, nên không đưa vào.</li>
+<li>{fp} báo nhầm chủ yếu đến từ BitTorrent thử lại peer, đồng bộ đám mây và telemetry (Dropbox, Microsoft, AWS) và NTP. Đó chính là hàng đợi AI analyst cần phân loại.</li>
+<li>Quét chậm từ Internet vào một máy: bắt được 1/6 ngày.</li>
+<li>Không dùng mô hình bất thường ở đây: bản ghi bắt đầu khi máy đã nhiễm nên không có baseline sạch để học.</li></ul>`
   }
 };
 let lang = 'en', B = null, current = null, tab = 'report';
@@ -490,7 +529,28 @@ function renderEval(){
   $('#checks').innerHTML = Object.entries(ae.by_check).map(([k,v]) => `<div class="check"><span>${t('c_' + k)}</span><span class="bar"><i style="width:${v*100}%"></i></span><span class="mono" style="text-align:right">${Math.round(v*100)}%</span></div>`).join('');
 }
 
-function renderAll(){ applyI18n(); renderChips(); renderKpis(); renderLegend(); renderQueue(); renderDetail(); renderEval(); drawTimeline(); }
+/* ---------- real data ---------- */
+let RD = null;
+function renderReal(){
+  if (!RD) return;
+  const s = RD.summary, sec = $('#real'); sec.hidden = false;
+  $('#realsrc').innerHTML = `<a href="${esc(RD.source)}" target="_blank" rel="noopener" style="color:inherit">Stratosphere Lab · CTU Prague</a>`;
+  const k = [
+    ['good', `${Math.round(s.infected_hosts * s.infected_detected)}<small> / ${s.infected_hosts}</small>`, t('r1'), t('r1s')],
+    ['', `${Math.round(s.alert_precision * 100)}<small>%</small>`, t('r2'), t('r2s')],
+    ['', `${String(s.false_alerts_per_day).replace('.', lang === 'vi' ? ',' : '.')}`, t('r3'), t('r3s')],
+    ['', nf(s.flows), t('r4'), `${Math.round(s.hours)} ${t('r4s')}`],
+  ];
+  $('#realkpis').innerHTML = k.map(([c,v,l,x]) => `<div class="kpi ${c}"><span class="label">${l}</span><span class="v">${v}</span><span class="s">${x}</span></div>`).join('');
+  const fams = Object.entries(s.by_family).sort((a,b) => b[1].hosts - a[1].hosts || a[0].localeCompare(b[0]));
+  let h = `<thead><tr><th>${t('fam')}</th><th class="num">${t('hostdays')}</th><th class="num">${t('detected')}</th><th class="num">${t('talerts')}</th></tr></thead><tbody>`;
+  h += fams.map(([f,v]) => { const r = v.detected / v.hosts; const c = r >= .99 ? 'var(--ok)' : r >= .5 ? 'var(--med)' : 'var(--crit)'; const bg = r >= .99 ? 'rgba(61,220,151,.18)' : r >= .5 ? 'rgba(242,201,76,.16)' : 'rgba(255,77,106,.16)';
+    return `<tr><td>${esc(f)}</td><td class="num mono">${v.hosts}</td><td class="num"><span class="pill" style="background:${bg};color:${c}">${v.detected}/${v.hosts}</span></td><td class="num mono">${v.true_alerts} / ${v.alerts}</td></tr>`; }).join('');
+  $('#realtab').innerHTML = h + '</tbody>';
+  $('#realnotes').innerHTML = t('realnotes').replace('{caps}', s.captures).replace('{fp}', s.alerts - Math.round(s.alerts * s.alert_precision));
+}
+
+function renderAll(){ applyI18n(); renderChips(); renderKpis(); renderLegend(); renderQueue(); renderDetail(); renderEval(); renderReal(); drawTimeline(); }
 
 document.addEventListener('click', e => {
   const inc = e.target.closest('.inc'); if (inc) { current = inc.dataset.id; tab = 'report'; renderQueue(); renderDetail(); drawTimeline(); if (window.innerWidth < 980) $('#detail').scrollIntoView({behavior:'smooth', block:'start'}); return; }
@@ -510,7 +570,8 @@ cv.addEventListener('click', e => { const r = cv.getBoundingClientRect(); const 
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { drawTimeline(); if (tab === 'graph') renderDetail(); }, 150); });
 
 const src = (window.NETSENTINEL_DATA_URL || 'data/demo.json');
-fetch(src).then(r => r.json()).then(b => { B = b; current = B.incidents[0] && B.incidents[0].incident_id; renderAll(); })
+const realP = fetch(window.NETSENTINEL_REAL_URL || 'data/real.json').then(r => r.ok ? r.json() : null).catch(() => null);
+fetch(src).then(r => r.json()).then(b => { B = b; current = B.incidents[0] && B.incidents[0].incident_id; renderAll(); realP.then(r => { if (r) { RD = r; renderReal(); } }); })
   .catch(err => { $('#detail').innerHTML = `<p class="empty">Could not load ${esc(src)}: ${esc(err.message)}. Run <code>python -m netsentinel run</code> first.</p>`; });
 })();
 </script>

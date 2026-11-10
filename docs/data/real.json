@@ -1,0 +1,713 @@
+{
+ "dataset": "Stratosphere Laboratory labelled Zeek captures (CTU Prague)",
+ "source": "https://github.com/stratosphereips/security-datasets-for-testing",
+ "summary": {
+  "by_family": {
+   "Kovter.B": {
+    "hosts": 2,
+    "detected": 2,
+    "alerts": 10,
+    "true_alerts": 10
+   },
+   "Bladabindi RAT": {
+    "hosts": 1,
+    "detected": 1,
+    "alerts": 3,
+    "true_alerts": 3
+   },
+   "Dridex": {
+    "hosts": 5,
+    "detected": 5,
+    "alerts": 20,
+    "true_alerts": 20
+   },
+   "Trickbot": {
+    "hosts": 5,
+    "detected": 5,
+    "alerts": 134,
+    "true_alerts": 133
+   },
+   "Cridex": {
+    "hosts": 5,
+    "detected": 1,
+    "alerts": 1,
+    "true_alerts": 1
+   }
+  },
+  "captures": 28,
+  "hours": 661.9,
+  "flows": 664922,
+  "infected_hosts": 18,
+  "infected_detected": 0.778,
+  "attacked_hosts": 6,
+  "attacked_detected": 0.167,
+  "clean_hosts": 4,
+  "alerts": 229,
+  "alert_precision": 0.734,
+  "false_alerts_per_day": 2.21,
+  "false_alerts_per_day_clean_hosts": 0.0,
+  "median_minutes_to_detect": 0.0,
+  "by_detector": {
+   "beaconing": {
+    "alerts": 216,
+    "true": 165
+   },
+   "rule:port-scan": {
+    "alerts": 7,
+    "true": 3
+   },
+   "rule:large-upload": {
+    "alerts": 6,
+    "true": 0
+   }
+  }
+ },
+ "captures": [
+  {
+   "capture": "008-zeek-mixed",
+   "kind": "mixed",
+   "family": "Benign host attacked from the Internet",
+   "original_name": "CTU-Normal-40",
+   "hours": 28.1,
+   "flows": 5663,
+   "malicious_flows": 4201,
+   "outbound_malware": false,
+   "alerts": 8,
+   "true_alerts": 0,
+   "false_alerts": 8,
+   "detected": false,
+   "malicious_flows_covered": 0.0,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 6.83,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 8,
+     "true": 0
+    }
+   }
+  },
+  {
+   "capture": "009-zeek-malicious",
+   "kind": "malicious",
+   "family": "Kovter.B",
+   "original_name": "CTU-Malware-Capture-Botnet-219-2",
+   "hours": 9.4,
+   "flows": 81235,
+   "malicious_flows": 64094,
+   "outbound_malware": true,
+   "alerts": 9,
+   "true_alerts": 9,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 1.0,
+   "minutes_to_first_true_alert": -0.0,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 8,
+     "true": 8
+    },
+    "rule:port-scan": {
+     "alerts": 1,
+     "true": 1
+    }
+   }
+  },
+  {
+   "capture": "010-zeek-mixed",
+   "kind": "mixed",
+   "family": "Benign host attacked from the Internet",
+   "original_name": "CTU-Normal-42",
+   "hours": 24.0,
+   "flows": 5347,
+   "malicious_flows": 3373,
+   "outbound_malware": false,
+   "alerts": 4,
+   "true_alerts": 1,
+   "false_alerts": 3,
+   "detected": true,
+   "malicious_flows_covered": 0.021,
+   "minutes_to_first_true_alert": 773.8,
+   "false_alerts_per_day": 3.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 3,
+     "true": 0
+    },
+    "rule:port-scan": {
+     "alerts": 1,
+     "true": 1
+    }
+   }
+  },
+  {
+   "capture": "011-zeek-mixed",
+   "kind": "mixed",
+   "family": "Benign host attacked from the Internet",
+   "original_name": "CTU-Normal-43",
+   "hours": 24.0,
+   "flows": 9048,
+   "malicious_flows": 3951,
+   "outbound_malware": false,
+   "alerts": 6,
+   "true_alerts": 0,
+   "false_alerts": 6,
+   "detected": false,
+   "malicious_flows_covered": 0.0,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 5.99,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 5,
+     "true": 0
+    },
+    "rule:large-upload": {
+     "alerts": 1,
+     "true": 0
+    }
+   }
+  },
+  {
+   "capture": "012-zeek-mixed",
+   "kind": "mixed",
+   "family": "Benign host attacked from the Internet",
+   "original_name": "CTU-Normal-44",
+   "hours": 24.0,
+   "flows": 4740,
+   "malicious_flows": 3028,
+   "outbound_malware": false,
+   "alerts": 0,
+   "true_alerts": 0,
+   "false_alerts": 0,
+   "detected": false,
+   "malicious_flows_covered": 0.0,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {}
+  },
+  {
+   "capture": "013-zeek-mixed",
+   "kind": "mixed",
+   "family": "Benign host attacked from the Internet",
+   "original_name": "CTU-Normal-45",
+   "hours": 24.7,
+   "flows": 58931,
+   "malicious_flows": 25373,
+   "outbound_malware": false,
+   "alerts": 43,
+   "true_alerts": 0,
+   "false_alerts": 43,
+   "detected": false,
+   "malicious_flows_covered": 0.0,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 41.8,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 35,
+     "true": 0
+    },
+    "rule:large-upload": {
+     "alerts": 5,
+     "true": 0
+    },
+    "rule:port-scan": {
+     "alerts": 3,
+     "true": 0
+    }
+   }
+  },
+  {
+   "capture": "014-zeek-malicious",
+   "kind": "malicious",
+   "family": "Bladabindi RAT",
+   "original_name": "CTU-Malware-Capture-Botnet-230-1",
+   "hours": 24.0,
+   "flows": 26806,
+   "malicious_flows": 14795,
+   "outbound_malware": true,
+   "alerts": 3,
+   "true_alerts": 3,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 0.49,
+   "minutes_to_first_true_alert": 0.3,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 3,
+     "true": 3
+    }
+   }
+  },
+  {
+   "capture": "015-zeek-malicious",
+   "kind": "malicious",
+   "family": "Kovter.B",
+   "original_name": "CTU-Malware-Capture-Botnet-219-2",
+   "hours": 24.0,
+   "flows": 202735,
+   "malicious_flows": 160719,
+   "outbound_malware": true,
+   "alerts": 1,
+   "true_alerts": 1,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 1.0,
+   "minutes_to_first_true_alert": 0.0,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "rule:port-scan": {
+     "alerts": 1,
+     "true": 1
+    }
+   }
+  },
+  {
+   "capture": "016-zeek-malicious",
+   "kind": "malicious",
+   "family": "Dridex",
+   "original_name": "CTU-Malware-Capture-Botnet-346-1",
+   "hours": 24.0,
+   "flows": 34713,
+   "malicious_flows": 721,
+   "outbound_malware": true,
+   "alerts": 4,
+   "true_alerts": 4,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 0.634,
+   "minutes_to_first_true_alert": 0.0,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 4,
+     "true": 4
+    }
+   }
+  },
+  {
+   "capture": "017-zeek-malicious",
+   "kind": "malicious",
+   "family": "Dridex",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 39429,
+   "malicious_flows": 714,
+   "outbound_malware": true,
+   "alerts": 4,
+   "true_alerts": 4,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 0.643,
+   "minutes_to_first_true_alert": 0.0,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 4,
+     "true": 4
+    }
+   }
+  },
+  {
+   "capture": "018-zeek-malicious",
+   "kind": "malicious",
+   "family": "Dridex",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 34020,
+   "malicious_flows": 710,
+   "outbound_malware": true,
+   "alerts": 4,
+   "true_alerts": 4,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 0.644,
+   "minutes_to_first_true_alert": 11.0,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 4,
+     "true": 4
+    }
+   }
+  },
+  {
+   "capture": "020-zeek-malicious",
+   "kind": "malicious",
+   "family": "Dridex",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 35272,
+   "malicious_flows": 710,
+   "outbound_malware": true,
+   "alerts": 4,
+   "true_alerts": 4,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 0.639,
+   "minutes_to_first_true_alert": 0.0,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 4,
+     "true": 4
+    }
+   }
+  },
+  {
+   "capture": "021-zeek-malicious",
+   "kind": "malicious",
+   "family": "Dridex",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 33926,
+   "malicious_flows": 721,
+   "outbound_malware": true,
+   "alerts": 4,
+   "true_alerts": 4,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 0.641,
+   "minutes_to_first_true_alert": 0.0,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 4,
+     "true": 4
+    }
+   }
+  },
+  {
+   "capture": "022-zeek-malicious",
+   "kind": "malicious",
+   "family": "Trickbot",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 5533,
+   "malicious_flows": 5324,
+   "outbound_malware": true,
+   "alerts": 27,
+   "true_alerts": 27,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 0.988,
+   "minutes_to_first_true_alert": 31.5,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 27,
+     "true": 27
+    }
+   }
+  },
+  {
+   "capture": "023-zeek-malicious",
+   "kind": "malicious",
+   "family": "Trickbot",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 5460,
+   "malicious_flows": 5359,
+   "outbound_malware": true,
+   "alerts": 26,
+   "true_alerts": 26,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 0.921,
+   "minutes_to_first_true_alert": 0.0,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 26,
+     "true": 26
+    }
+   }
+  },
+  {
+   "capture": "024-zeek-malicious",
+   "kind": "malicious",
+   "family": "Trickbot",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 6536,
+   "malicious_flows": 5433,
+   "outbound_malware": true,
+   "alerts": 27,
+   "true_alerts": 26,
+   "false_alerts": 1,
+   "detected": true,
+   "malicious_flows_covered": 0.956,
+   "minutes_to_first_true_alert": 2.0,
+   "false_alerts_per_day": 1.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 26,
+     "true": 26
+    },
+    "rule:port-scan": {
+     "alerts": 1,
+     "true": 0
+    }
+   }
+  },
+  {
+   "capture": "025-zeek-malicious",
+   "kind": "malicious",
+   "family": "Trickbot",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 5341,
+   "malicious_flows": 5262,
+   "outbound_malware": true,
+   "alerts": 28,
+   "true_alerts": 28,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 0.994,
+   "minutes_to_first_true_alert": 0.0,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 28,
+     "true": 28
+    }
+   }
+  },
+  {
+   "capture": "026-zeek-malicious",
+   "kind": "malicious",
+   "family": "Trickbot",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 5355,
+   "malicious_flows": 5271,
+   "outbound_malware": true,
+   "alerts": 26,
+   "true_alerts": 26,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 0.983,
+   "minutes_to_first_true_alert": 0.0,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 26,
+     "true": 26
+    }
+   }
+  },
+  {
+   "capture": "027-zeek-malicious",
+   "kind": "malicious",
+   "family": "Cridex",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 2222,
+   "malicious_flows": 1996,
+   "outbound_malware": true,
+   "alerts": 0,
+   "true_alerts": 0,
+   "false_alerts": 0,
+   "detected": false,
+   "malicious_flows_covered": 0.0,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {}
+  },
+  {
+   "capture": "028-zeek-malicious",
+   "kind": "malicious",
+   "family": "Cridex",
+   "original_name": "",
+   "hours": 23.9,
+   "flows": 2139,
+   "malicious_flows": 1935,
+   "outbound_malware": true,
+   "alerts": 0,
+   "true_alerts": 0,
+   "false_alerts": 0,
+   "detected": false,
+   "malicious_flows_covered": 0.0,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {}
+  },
+  {
+   "capture": "029-zeek-malicious",
+   "kind": "malicious",
+   "family": "Cridex",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 2449,
+   "malicious_flows": 2221,
+   "outbound_malware": true,
+   "alerts": 1,
+   "true_alerts": 1,
+   "false_alerts": 0,
+   "detected": true,
+   "malicious_flows_covered": 0.056,
+   "minutes_to_first_true_alert": 365.1,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 1,
+     "true": 1
+    }
+   }
+  },
+  {
+   "capture": "030-zeek-malicious",
+   "kind": "malicious",
+   "family": "Cridex",
+   "original_name": "",
+   "hours": 23.9,
+   "flows": 2238,
+   "malicious_flows": 2037,
+   "outbound_malware": true,
+   "alerts": 0,
+   "true_alerts": 0,
+   "false_alerts": 0,
+   "detected": false,
+   "malicious_flows_covered": 0.0,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {}
+  },
+  {
+   "capture": "031-zeek-malicious",
+   "kind": "malicious",
+   "family": "Cridex",
+   "original_name": "",
+   "hours": 23.9,
+   "flows": 2199,
+   "malicious_flows": 1994,
+   "outbound_malware": true,
+   "alerts": 0,
+   "true_alerts": 0,
+   "false_alerts": 0,
+   "detected": false,
+   "malicious_flows_covered": 0.0,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {}
+  },
+  {
+   "capture": "033-zeek-malicious",
+   "kind": "malicious",
+   "family": "Bladabindi RAT",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 11663,
+   "malicious_flows": 0,
+   "outbound_malware": false,
+   "alerts": 0,
+   "true_alerts": 0,
+   "false_alerts": 0,
+   "detected": null,
+   "malicious_flows_covered": null,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {}
+  },
+  {
+   "capture": "034-zeek-malicious",
+   "kind": "malicious",
+   "family": "Bladabindi RAT",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 11731,
+   "malicious_flows": 0,
+   "outbound_malware": false,
+   "alerts": 0,
+   "true_alerts": 0,
+   "false_alerts": 0,
+   "detected": null,
+   "malicious_flows_covered": null,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {}
+  },
+  {
+   "capture": "035-zeek-malicious",
+   "kind": "malicious",
+   "family": "Bladabindi RAT",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 11905,
+   "malicious_flows": 0,
+   "outbound_malware": false,
+   "alerts": 0,
+   "true_alerts": 0,
+   "false_alerts": 0,
+   "detected": null,
+   "malicious_flows_covered": null,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {}
+  },
+  {
+   "capture": "036-zeek-malicious",
+   "kind": "malicious",
+   "family": "Bladabindi RAT",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 11849,
+   "malicious_flows": 0,
+   "outbound_malware": false,
+   "alerts": 0,
+   "true_alerts": 0,
+   "false_alerts": 0,
+   "detected": null,
+   "malicious_flows_covered": null,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {}
+  },
+  {
+   "capture": "037-zeek-mixed",
+   "kind": "mixed",
+   "family": "-",
+   "original_name": "",
+   "hours": 24.0,
+   "flows": 6437,
+   "malicious_flows": 3860,
+   "outbound_malware": false,
+   "alerts": 0,
+   "true_alerts": 0,
+   "false_alerts": 0,
+   "detected": false,
+   "malicious_flows_covered": 0.0,
+   "minutes_to_first_true_alert": null,
+   "false_alerts_per_day": 0.0,
+   "model_ran": false,
+   "by_detector": {}
+  }
+ ]
+}

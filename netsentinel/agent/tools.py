@@ -11,7 +11,7 @@ import pandas as pd
 
 from .. import mitre
 from ..detect import DetectionResult
-from ..features import is_internal
+from ..features import internal_mask, is_internal
 from ..simulate import LabData
 
 TZ = dt.timezone(dt.timedelta(hours=7))
@@ -56,8 +56,8 @@ class Workspace:
             "baseline": {
                 "connections_per_day": round(len(base) / self.data.meta["baseline_days"]),
                 "usual_ports": base.dst_port.value_counts().head(6).index.tolist(),
-                "internal_peers": sorted(base.loc[base.dst_ip.map(is_internal), "dst_ip"].unique().tolist())[:10],
-                "external_destinations": int(base.loc[~base.dst_ip.map(is_internal), "dst_ip"].nunique()),
+                "internal_peers": sorted(base.loc[internal_mask(base.dst_ip), "dst_ip"].unique().tolist())[:10],
+                "external_destinations": int(base.loc[~internal_mask(base.dst_ip), "dst_ip"].nunique()),
                 "accounts_used": accounts[:8],
             },
             "first_seen_in_baseline": not base.empty or ip in self.hosts.index,
