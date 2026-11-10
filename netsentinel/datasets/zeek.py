@@ -27,6 +27,26 @@ def read_zeek(path: str | Path) -> pd.DataFrame:
                 empty = line.rstrip("\n").split("\t")[1]
     if fields is None:
         raise ValueError(f"{path}: no #fields header")
-    df = pd.read_csv(path, sep="\t", comment="#", names=fields, header=None, dtype=str,
+    with path.open(encoding="utf-8", errors="replace") as fh:
+        sample = next((l for l in fh if not l.startswith("#")), "")
+    src = path
+    if sample and sample.count("\t") + 1 < len(fields):
+        # IoT-23 writes its last three columns separated by runs of spaces instead of tabs:
+        # split only the final tab-separated field, so spaces elsewhere are left alone.
+        import io
+        import re
+        n = len(fields)
+        out = []
+        for line in path.open(encoding="utf-8", errors="replace"):
+            if line.startswith("#"):
+                continue
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < n:
+                parts = parts[:-1] + re.split(r" {2,}", parts[-1], maxsplit=n - len(parts))
+            out.append("\t".join(parts[:n]))
+        src = io.StringIO("\n".join(out))
+    df = pd.read_csv(src, sep="\t", comment="#", names=fields, header=None, dtype=str,
                      na_values=[unset, empty], keep_default_na=False, quoting=3, engine="c")
+    if "detailed-label" in df.columns and "detailedlabel" not in df.columns:
+        df = df.rename(columns={"detailed-label": "detailedlabel"})
     return df

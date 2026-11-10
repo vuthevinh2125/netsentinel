@@ -106,6 +106,7 @@ def main(argv=None) -> int:
     e.add_argument("--seed", type=int, default=7)
     rv = sub.add_parser("real-eval", help="evaluate on real labelled Zeek captures")
     rv.add_argument("--data", default="data/stratosphere", help="folder from scripts/fetch_stratosphere.sh")
+    rv.add_argument("--iot23", default=None, help="IoT-23 folder (scripts/fetch_iot23.sh) for the blind test")
     rv.add_argument("--out", default="docs/data/real.json")
     a = p.parse_args(argv)
 
@@ -131,10 +132,15 @@ def main(argv=None) -> int:
     elif a.cmd == "real-eval":
         from .datasets import realeval
         res = realeval.run_all(a.data, verbose=True)
+        if a.iot23:
+            res["blind"] = realeval.run_iot23(a.iot23, verbose=True)
         out = Path(a.out)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(res, ensure_ascii=False, indent=1, default=_py), encoding="utf-8")
         print(realeval.markdown(res))
+        if "blind" in res:
+            print("\nBlind test, IoT-23:")
+            print(realeval.markdown(res["blind"], unit="Infected devices"))
         print(f"-> {out}")
     return 0
 

@@ -709,5 +709,628 @@
    "model_ran": false,
    "by_detector": {}
   }
- ]
+ ],
+ "blind": {
+  "dataset": "IoT-23 (Stratosphere Laboratory, CTU Prague)",
+  "source": "https://www.stratosphereips.org/datasets-iot23",
+  "summary": {
+   "by_family": {
+    "Hide and Seek": {
+     "hosts": 1,
+     "detected": 1,
+     "alerts": 17,
+     "true_alerts": 13
+    },
+    "Muhstik": {
+     "hosts": 1,
+     "detected": 1,
+     "alerts": 95,
+     "true_alerts": 90
+    },
+    "Mirai": {
+     "hosts": 8,
+     "detected": 7,
+     "alerts": 19,
+     "true_alerts": 9
+    },
+    "Hakai": {
+     "hosts": 1,
+     "detected": 1,
+     "alerts": 3,
+     "true_alerts": 2
+    },
+    "Hajime": {
+     "hosts": 1,
+     "detected": 1,
+     "alerts": 1,
+     "true_alerts": 1
+    },
+    "Kenjiro": {
+     "hosts": 2,
+     "detected": 2,
+     "alerts": 2,
+     "true_alerts": 2
+    },
+    "Torii": {
+     "hosts": 2,
+     "detected": 0,
+     "alerts": 4,
+     "true_alerts": 0
+    },
+    "Okiru": {
+     "hosts": 1,
+     "detected": 1,
+     "alerts": 2,
+     "true_alerts": 2
+    },
+    "IRCBot": {
+     "hosts": 1,
+     "detected": 1,
+     "alerts": 1,
+     "true_alerts": 1
+    },
+    "Trojan": {
+     "hosts": 1,
+     "detected": 0,
+     "alerts": 2,
+     "true_alerts": 0
+    },
+    "Gagfyt": {
+     "hosts": 1,
+     "detected": 1,
+     "alerts": 11,
+     "true_alerts": 5
+    }
+   },
+   "captures": 20,
+   "hours": 181.2,
+   "flows": 1500778,
+   "infected_hosts": 20,
+   "infected_detected": 0.8,
+   "attacked_hosts": 0,
+   "attacked_detected": null,
+   "clean_hosts": 0,
+   "alerts": 157,
+   "alert_precision": 0.796,
+   "false_alerts_per_day": 4.24,
+   "false_alerts_per_day_clean_hosts": null,
+   "median_minutes_to_detect": 0.0,
+   "by_detector": {
+    "beaconing": {
+     "alerts": 121,
+     "true": 90
+    },
+    "rule:port-scan": {
+     "alerts": 31,
+     "true": 30
+    },
+    "rule:large-upload": {
+     "alerts": 5,
+     "true": 5
+    }
+   }
+  },
+  "captures": [
+   {
+    "capture": "CTU-IoT-Malware-Capture-1-1",
+    "kind": "malicious",
+    "family": "Hide and Seek",
+    "original_name": "CTU-IoT-Malware-Capture-1-1",
+    "hours": 10.4,
+    "flows": 99999,
+    "malicious_flows": 55043,
+    "outbound_malware": true,
+    "alerts": 17,
+    "true_alerts": 13,
+    "false_alerts": 4,
+    "detected": true,
+    "malicious_flows_covered": 1.0,
+    "minutes_to_first_true_alert": -0.0,
+    "false_alerts_per_day": 9.24,
+    "model_ran": false,
+    "by_detector": {
+     "beaconing": {
+      "alerts": 16,
+      "true": 12
+     },
+     "rule:port-scan": {
+      "alerts": 1,
+      "true": 1
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-3-1",
+    "kind": "malicious",
+    "family": "Muhstik",
+    "original_name": "CTU-IoT-Malware-Capture-3-1",
+    "hours": 36.1,
+    "flows": 156103,
+    "malicious_flows": 151566,
+    "outbound_malware": true,
+    "alerts": 95,
+    "true_alerts": 90,
+    "false_alerts": 5,
+    "detected": true,
+    "malicious_flows_covered": 0.921,
+    "minutes_to_first_true_alert": 17.3,
+    "false_alerts_per_day": 3.32,
+    "model_ran": false,
+    "by_detector": {
+     "beaconing": {
+      "alerts": 76,
+      "true": 71
+     },
+     "rule:port-scan": {
+      "alerts": 19,
+      "true": 19
+     }
+    },
+    "truncated": false
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-7-1",
+    "kind": "malicious",
+    "family": "Mirai",
+    "original_name": "CTU-IoT-Malware-Capture-7-1",
+    "hours": 0.4,
+    "flows": 99999,
+    "malicious_flows": 99796,
+    "outbound_malware": true,
+    "alerts": 1,
+    "true_alerts": 1,
+    "false_alerts": 0,
+    "detected": true,
+    "malicious_flows_covered": 1.0,
+    "minutes_to_first_true_alert": -1.4,
+    "false_alerts_per_day": 0.0,
+    "model_ran": false,
+    "by_detector": {
+     "rule:port-scan": {
+      "alerts": 1,
+      "true": 1
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-8-1",
+    "kind": "malicious",
+    "family": "Hakai",
+    "original_name": "CTU-IoT-Malware-Capture-8-1",
+    "hours": 24.0,
+    "flows": 10400,
+    "malicious_flows": 8222,
+    "outbound_malware": true,
+    "alerts": 3,
+    "true_alerts": 2,
+    "false_alerts": 1,
+    "detected": true,
+    "malicious_flows_covered": 1.0,
+    "minutes_to_first_true_alert": 0.0,
+    "false_alerts_per_day": 1.0,
+    "model_ran": false,
+    "by_detector": {
+     "beaconing": {
+      "alerts": 3,
+      "true": 2
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-9-1",
+    "kind": "malicious",
+    "family": "Hajime",
+    "original_name": "CTU-IoT-Malware-Capture-9-1",
+    "hours": 4.8,
+    "flows": 99999,
+    "malicious_flows": 98911,
+    "outbound_malware": true,
+    "alerts": 1,
+    "true_alerts": 1,
+    "false_alerts": 0,
+    "detected": true,
+    "malicious_flows_covered": 1.0,
+    "minutes_to_first_true_alert": -3.7,
+    "false_alerts_per_day": 0.0,
+    "model_ran": false,
+    "by_detector": {
+     "rule:port-scan": {
+      "alerts": 1,
+      "true": 1
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-17-1",
+    "kind": "malicious",
+    "family": "Kenjiro",
+    "original_name": "CTU-IoT-Malware-Capture-17-1",
+    "hours": 0.1,
+    "flows": 99999,
+    "malicious_flows": 99956,
+    "outbound_malware": true,
+    "alerts": 1,
+    "true_alerts": 1,
+    "false_alerts": 0,
+    "detected": true,
+    "malicious_flows_covered": 1.0,
+    "minutes_to_first_true_alert": -0.4,
+    "false_alerts_per_day": 0.0,
+    "model_ran": false,
+    "by_detector": {
+     "rule:port-scan": {
+      "alerts": 1,
+      "true": 1
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-20-1",
+    "kind": "malicious",
+    "family": "Torii",
+    "original_name": "CTU-IoT-Malware-Capture-20-1",
+    "hours": 24.0,
+    "flows": 3206,
+    "malicious_flows": 16,
+    "outbound_malware": true,
+    "alerts": 1,
+    "true_alerts": 0,
+    "false_alerts": 1,
+    "detected": false,
+    "malicious_flows_covered": 0.0,
+    "minutes_to_first_true_alert": null,
+    "false_alerts_per_day": 1.0,
+    "model_ran": false,
+    "by_detector": {
+     "beaconing": {
+      "alerts": 1,
+      "true": 0
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-21-1",
+    "kind": "malicious",
+    "family": "Torii",
+    "original_name": "CTU-IoT-Malware-Capture-21-1",
+    "hours": 23.9,
+    "flows": 3283,
+    "malicious_flows": 14,
+    "outbound_malware": true,
+    "alerts": 3,
+    "true_alerts": 0,
+    "false_alerts": 3,
+    "detected": false,
+    "malicious_flows_covered": 0.0,
+    "minutes_to_first_true_alert": null,
+    "false_alerts_per_day": 3.01,
+    "model_ran": false,
+    "by_detector": {
+     "beaconing": {
+      "alerts": 3,
+      "true": 0
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-33-1",
+    "kind": "malicious",
+    "family": "Kenjiro",
+    "original_name": "CTU-IoT-Malware-Capture-33-1",
+    "hours": 0.1,
+    "flows": 99999,
+    "malicious_flows": 97460,
+    "outbound_malware": true,
+    "alerts": 1,
+    "true_alerts": 1,
+    "false_alerts": 0,
+    "detected": true,
+    "malicious_flows_covered": 1.0,
+    "minutes_to_first_true_alert": -2.7,
+    "false_alerts_per_day": 0.0,
+    "model_ran": false,
+    "by_detector": {
+     "rule:port-scan": {
+      "alerts": 1,
+      "true": 1
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-34-1",
+    "kind": "malicious",
+    "family": "Mirai",
+    "original_name": "CTU-IoT-Malware-Capture-34-1",
+    "hours": 24.0,
+    "flows": 23142,
+    "malicious_flows": 21222,
+    "outbound_malware": true,
+    "alerts": 7,
+    "true_alerts": 3,
+    "false_alerts": 4,
+    "detected": true,
+    "malicious_flows_covered": 0.684,
+    "minutes_to_first_true_alert": 369.4,
+    "false_alerts_per_day": 4.0,
+    "model_ran": false,
+    "by_detector": {
+     "beaconing": {
+      "alerts": 7,
+      "true": 3
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-35-1",
+    "kind": "malicious",
+    "family": "Mirai",
+    "original_name": "CTU-IoT-Malware-Capture-35-1",
+    "hours": 0.5,
+    "flows": 99999,
+    "malicious_flows": 82,
+    "outbound_malware": true,
+    "alerts": 1,
+    "true_alerts": 0,
+    "false_alerts": 1,
+    "detected": false,
+    "malicious_flows_covered": 0.0,
+    "minutes_to_first_true_alert": null,
+    "false_alerts_per_day": 53.31,
+    "model_ran": false,
+    "by_detector": {
+     "rule:port-scan": {
+      "alerts": 1,
+      "true": 0
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-36-1",
+    "kind": "malicious",
+    "family": "Okiru",
+    "original_name": "CTU-IoT-Malware-Capture-36-1",
+    "hours": 0.2,
+    "flows": 99999,
+    "malicious_flows": 99978,
+    "outbound_malware": true,
+    "alerts": 2,
+    "true_alerts": 2,
+    "false_alerts": 0,
+    "detected": true,
+    "malicious_flows_covered": 1.0,
+    "minutes_to_first_true_alert": 0.0,
+    "false_alerts_per_day": 0.0,
+    "model_ran": false,
+    "by_detector": {
+     "beaconing": {
+      "alerts": 1,
+      "true": 1
+     },
+     "rule:port-scan": {
+      "alerts": 1,
+      "true": 1
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-39-1",
+    "kind": "malicious",
+    "family": "IRCBot",
+    "original_name": "CTU-IoT-Malware-Capture-39-1",
+    "hours": 0.2,
+    "flows": 99999,
+    "malicious_flows": 99938,
+    "outbound_malware": true,
+    "alerts": 1,
+    "true_alerts": 1,
+    "false_alerts": 0,
+    "detected": true,
+    "malicious_flows_covered": 1.0,
+    "minutes_to_first_true_alert": 5.6,
+    "false_alerts_per_day": 0.0,
+    "model_ran": false,
+    "by_detector": {
+     "rule:port-scan": {
+      "alerts": 1,
+      "true": 1
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-42-1",
+    "kind": "malicious",
+    "family": "Trojan",
+    "original_name": "CTU-IoT-Malware-Capture-42-1",
+    "hours": 8.3,
+    "flows": 4423,
+    "malicious_flows": 4,
+    "outbound_malware": true,
+    "alerts": 2,
+    "true_alerts": 0,
+    "false_alerts": 2,
+    "detected": false,
+    "malicious_flows_covered": 0.0,
+    "minutes_to_first_true_alert": null,
+    "false_alerts_per_day": 5.75,
+    "model_ran": false,
+    "by_detector": {
+     "beaconing": {
+      "alerts": 2,
+      "true": 0
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-43-1",
+    "kind": "malicious",
+    "family": "Mirai",
+    "original_name": "CTU-IoT-Malware-Capture-43-1",
+    "hours": 0.1,
+    "flows": 99999,
+    "malicious_flows": 69993,
+    "outbound_malware": true,
+    "alerts": 1,
+    "true_alerts": 1,
+    "false_alerts": 0,
+    "detected": true,
+    "malicious_flows_covered": 1.0,
+    "minutes_to_first_true_alert": 2.0,
+    "false_alerts_per_day": 0.0,
+    "model_ran": false,
+    "by_detector": {
+     "rule:port-scan": {
+      "alerts": 1,
+      "true": 1
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-44-1",
+    "kind": "malicious",
+    "family": "Mirai",
+    "original_name": "CTU-IoT-Malware-Capture-44-1",
+    "hours": 1.9,
+    "flows": 234,
+    "malicious_flows": 23,
+    "outbound_malware": true,
+    "alerts": 6,
+    "true_alerts": 1,
+    "false_alerts": 5,
+    "detected": true,
+    "malicious_flows_covered": 0.043,
+    "minutes_to_first_true_alert": 104.4,
+    "false_alerts_per_day": 62.84,
+    "model_ran": false,
+    "by_detector": {
+     "beaconing": {
+      "alerts": 5,
+      "true": 0
+     },
+     "rule:large-upload": {
+      "alerts": 1,
+      "true": 1
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-48-1",
+    "kind": "malicious",
+    "family": "Mirai",
+    "original_name": "CTU-IoT-Malware-Capture-48-1",
+    "hours": 0.3,
+    "flows": 99999,
+    "malicious_flows": 99879,
+    "outbound_malware": true,
+    "alerts": 1,
+    "true_alerts": 1,
+    "false_alerts": 0,
+    "detected": true,
+    "malicious_flows_covered": 1.0,
+    "minutes_to_first_true_alert": -0.0,
+    "false_alerts_per_day": 0.0,
+    "model_ran": false,
+    "by_detector": {
+     "rule:port-scan": {
+      "alerts": 1,
+      "true": 1
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-49-1",
+    "kind": "malicious",
+    "family": "Mirai",
+    "original_name": "CTU-IoT-Malware-Capture-49-1",
+    "hours": 0.1,
+    "flows": 99999,
+    "malicious_flows": 99927,
+    "outbound_malware": true,
+    "alerts": 1,
+    "true_alerts": 1,
+    "false_alerts": 0,
+    "detected": true,
+    "malicious_flows_covered": 1.0,
+    "minutes_to_first_true_alert": 0.1,
+    "false_alerts_per_day": 0.0,
+    "model_ran": false,
+    "by_detector": {
+     "rule:port-scan": {
+      "alerts": 1,
+      "true": 1
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-52-1",
+    "kind": "malicious",
+    "family": "Mirai",
+    "original_name": "CTU-IoT-Malware-Capture-52-1",
+    "hours": 0.1,
+    "flows": 99999,
+    "malicious_flows": 99995,
+    "outbound_malware": true,
+    "alerts": 1,
+    "true_alerts": 1,
+    "false_alerts": 0,
+    "detected": true,
+    "malicious_flows_covered": 1.0,
+    "minutes_to_first_true_alert": 0.3,
+    "false_alerts_per_day": 0.0,
+    "model_ran": false,
+    "by_detector": {
+     "rule:port-scan": {
+      "alerts": 1,
+      "true": 1
+     }
+    },
+    "truncated": true
+   },
+   {
+    "capture": "CTU-IoT-Malware-Capture-60-1",
+    "kind": "malicious",
+    "family": "Gagfyt",
+    "original_name": "CTU-IoT-Malware-Capture-60-1",
+    "hours": 21.7,
+    "flows": 99999,
+    "malicious_flows": 99516,
+    "outbound_malware": true,
+    "alerts": 11,
+    "true_alerts": 5,
+    "false_alerts": 6,
+    "detected": true,
+    "malicious_flows_covered": 0.001,
+    "minutes_to_first_true_alert": 0.0,
+    "false_alerts_per_day": 6.63,
+    "model_ran": false,
+    "by_detector": {
+     "beaconing": {
+      "alerts": 7,
+      "true": 1
+     },
+     "rule:large-upload": {
+      "alerts": 4,
+      "true": 4
+     }
+    },
+    "truncated": true
+   }
+  ]
+ }
 }

@@ -47,3 +47,25 @@ def test_run_all_summary():
     s = res["summary"]
     assert s["captures"] == 1 and s["infected_detected"] == 1.0 and s["alert_precision"] == 1.0
     assert "TestBot" in s["by_family"]
+
+
+def test_iot23_csv_blind_path():
+    from netsentinel.datasets import iot23
+    caps = iot23.captures(FIX / "iot23")
+    assert [n for _, n in caps] == [34]
+    data = iot23.load(*caps[0])
+    assert data.meta["family"] == "Mirai" and data.meta["truncated"] is True
+    assert (data.flows.label == "malicious").sum() == 400 and data.flows.attack_id.iloc[0] == "PartOfAHorizontalPortScan"
+    res = realeval.run_iot23(FIX / "iot23")
+    assert res["summary"]["infected_detected"] == 1.0
+    assert res["summary"]["by_detector"]["rule:port-scan"]["true"] == 1
+
+
+def test_zeek_space_separated_labels(tmp_path):
+    # IoT-23 logs put the last three columns after runs of spaces, not tabs
+    src = (FIX / "000-zeek-malicious" / "data" / "conn.log.labeled").read_text().splitlines()
+    out = [l if l.startswith("#") else l.rsplit("\t", 2)[0] + "   " + "   ".join(l.rsplit("\t", 2)[1:]) for l in src]
+    p = tmp_path / "conn.log.labeled"
+    p.write_text("\n".join(out) + "\n")
+    df = read_zeek(p)
+    assert len(df) == 140 and set(df.label) == {"Malicious", "Benign"}

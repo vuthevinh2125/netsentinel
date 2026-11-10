@@ -4,7 +4,7 @@
 
 NetSentinel watches a company network the way a small Security Operations Centre would: it learns how every host normally behaves, raises alerts from rules, an anomaly model and a beaconing detector, chains the alerts into incidents, and then an **AI analyst investigates each incident with read-only tools** and writes the report, including saying when an alert is a false alarm.
 
-Everything runs on a reproducible lab: seven days of traffic from a simulated 54-host company with seven injected, MITRE ATT&CK-labelled attacks and several legitimate activities that look suspicious on purpose. That makes every number below checkable. The detectors are then tested on **28 real, labelled malware captures** from a university security lab, and the README reports what broke.
+Everything runs on a reproducible lab: seven days of traffic from a simulated 54-host company with seven injected, MITRE ATT&CK-labelled attacks and several legitimate activities that look suspicious on purpose. That makes every number below checkable. The detectors are then tested on **real, labelled malware traffic** from a university security lab, including a blind test on a dataset they never saw, and the README reports what broke.
 
 ![NetSentinel dashboard](docs/screenshot.png)
 
@@ -56,6 +56,27 @@ bash scripts/fetch_stratosphere.sh            # ~120 MB of labelled Zeek logs in
 python -m netsentinel real-eval               # the table above, plus docs/data/real.json for the dashboard
 ```
 
+### Blind test: IoT-23
+
+The Windows results above came after two changes made while looking at that data, so they are development numbers. To get one nobody can call tuned, the detectors were frozen and run **once** on a dataset they had never seen: **[IoT-23](https://www.stratosphereips.org/datasets-iot23)**, 20 captures of Linux IoT devices infected with Mirai, Torii, Hajime, Okiru and other botnets. That is a different kind of machine and a different kind of malware. Only the log reader was extended to parse its format.
+
+| Malware family | Infected devices | Detected | True / all alerts |
+|---|---|---|---|
+| Mirai | 8 | **7/8** | 9 / 19 |
+| Kenjiro | 2 | **2/2** | 2 / 2 |
+| Torii | 2 | 0/2 | 0 / 4 |
+| Muhstik, Hajime, Hakai, Okiru, IRCBot, Gagfyt, Hide and Seek | 1 each | **7/7** | 114 / 130 |
+| Trojan | 1 | 0/1 | 0 / 2 |
+
+**16 of 20 infected devices caught, 80% alert precision, 4.2 false alerts per day, over 1.5 million flows.** Mass scanning (Mirai, Hajime, Kenjiro, IRCBot, Muhstik) is caught by the scan rule; C2 heartbeats (Hakai, Hide and Seek) by the beaconing detector. The misses are the quiet ones: Torii and the Trojan sent only 4 to 16 malicious flows in the whole capture, and one Mirai capture had 82, too few for volume- or rhythm-based detection.
+
+Most scenarios are the first 100,000 flows of the original capture, from a public GitHub mirror (the official server is not reachable from every network). The mirror was checked against the original log of scenario 3-1: the same 99,999 flows with the same labels.
+
+```bash
+bash scripts/fetch_iot23.sh                   # ~260 MB into data/iot23
+python -m netsentinel real-eval --iot23 data/iot23
+```
+
 ## How it works
 
 ```
@@ -78,7 +99,7 @@ flows · logins · DNS ───────────────────
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q                         # 20 tests
+python -m pytest -q                         # 22 tests
 python -m netsentinel compare               # the table above
 python -m netsentinel run --seed 11         # new network, writes docs/data/demo.json
 python -m netsentinel agent-eval            # grade the analyst
@@ -98,7 +119,7 @@ The same seven checks grade both analysts, so the comparison is like for like.
 ## Honest limits
 
 - The lab data is simulated. The real-traffic evaluation uses public research captures of single machines over about a day each. That tests the C2 and scan detectors on real malware, but not lateral movement across a real company network, and not the anomaly model, which needs a clean baseline.
-- The real-data numbers come after the two changes described above, which were made while looking at this dataset. Treat them as development results, not a blind test.
+- The Windows real-data numbers come after the two changes described above, which were made while looking at that dataset, so they are development results. The IoT-23 numbers are the blind test.
 - The playbook analyst is written for these seven attack types; its perfect score shows the harness works, not that it generalises. Generalising is the LLM analyst's job, and the eval exists to measure it.
 - No organisation's private logs were used at any point.
 
@@ -112,6 +133,8 @@ NetSentinel là một SOC mini có AI:
 Trên 5 mạng sinh độc lập, cách kết hợp phát hiện **7/7** cuộc tấn công với **0,4** báo nhầm mỗi ngày.
 
 **Trên dữ liệu thật:** 28 bản ghi Zeek công khai của phòng lab Stratosphere (Đại học Kỹ thuật Séc), gồm 662 giờ và 664.922 flow từ các máy Windows nhiễm Trickbot, Dridex, Kovter, Bladabindi và Cridex. Hệ thống phát hiện **14/18 ngày-máy bị nhiễm**, độ chính xác cảnh báo **73%**, **2,2 báo nhầm/ngày** và không báo nhầm lần nào trên các ngày sạch. Dữ liệu thật làm lộ một lỗi mà lab mô phỏng không có: gói multicast IPv6 bị coi là máy trên Internet. Sau khi sửa lỗi này, độ chính xác tăng từ 34% lên 95% trước khi khai báo mạng nội bộ. Cridex vẫn là điểm yếu (1/5).
+
+**Kiểm tra mù trên IoT-23:** bộ phát hiện được giữ nguyên và chạy đúng một lần trên 20 bản ghi thiết bị IoT nhiễm Mirai, Torii, Hajime, Okiru và các botnet khác (1,5 triệu flow). Kết quả: phát hiện **16/20 thiết bị**, độ chính xác **80%**, 4,2 báo nhầm/ngày. Các ca bỏ sót là mã độc rất "im lặng" (Torii, Trojan) chỉ có 4–16 flow độc hại.
 
 ---
 

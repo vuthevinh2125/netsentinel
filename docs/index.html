@@ -166,6 +166,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .realnotes{font-size:13px;line-height:1.6;color:var(--muted)}
 .realnotes b{color:var(--text)}
 .realnotes ul{margin:6px 0 10px;padding-left:18px}
+.blind{border-top:1px solid var(--line);padding-top:4px}
+.blind h3{font:600 13px var(--mono);letter-spacing:.06em;text-transform:uppercase;margin:16px 16px 12px;color:var(--accent)}
+.blindk{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0 0 12px}
+.blindk span{color:var(--muted)} .blindk b{font:600 20px var(--display);color:var(--text);margin-right:4px}
 .pill{display:inline-block;font:600 11px var(--mono);padding:2px 8px;border-radius:999px}
 .note{padding:0 16px 16px;color:var(--muted);font-size:12.5px;max-width:80ch}
 footer.foot{border-top:1px solid var(--line);margin-top:8px}
@@ -235,6 +239,13 @@ footer.foot .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-bet
       <div class="tablewrap"><table id="realtab"></table></div>
       <div class="realnotes" id="realnotes"></div>
     </div>
+    <div class="blind" id="blind" hidden>
+      <h3 data-i18n="blindh">Blind test: IoT-23, run once, nothing changed</h3>
+      <div class="realgrid">
+        <div class="tablewrap"><table id="blindtab"></table></div>
+        <div class="realnotes" id="blindnotes"></div>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -281,7 +292,13 @@ const T = {
 <li>Cridex: 1 of 5 days. Its C2 traffic is jittery and varied in size, like normal HTTPS. A size-regularity check caught it but also flagged Microsoft telemetry, so it was not shipped.</li>
 <li>The {fp} false alerts are mostly BitTorrent retrying peers, cloud sync and telemetry (Dropbox, Microsoft, AWS) and NTP. That is the queue the AI analyst exists to triage.</li>
 <li>Slow scans from the Internet against a single machine: 1 of 6 days caught.</li>
-<li>The anomaly model is not used here: a capture that starts already infected has no clean baseline to learn from.</li></ul>`
+<li>The anomaly model is not used here: a capture that starts already infected has no clean baseline to learn from.</li></ul>`,
+    blindh:'Blind test: IoT-23, run once, nothing changed', devices:'Infected devices',
+    bk1:'devices caught', bk2:'alert precision', bk3:'false alerts / day', bk4:'flows',
+    blindnotes:`<p>The Windows results above came after two fixes made while looking at that data. To get a number nobody can call tuned, the detectors were frozen and run <b>once</b> on <b>IoT-23</b>: {caps} captures of Linux IoT devices infected with Mirai, Torii, Hajime, Okiru and other botnets, a different dataset of a different kind of machine. Only the log reader was extended to read its format.</p>
+<p><b>Caught:</b> mass scanning (Mirai, Hajime, Kenjiro, IRCBot, Muhstik) by the scan rule, and C2 heartbeats (Hakai, Hide and Seek) by the beaconing detector.</p>
+<p><b>Missed:</b> Torii (2 days) and a Trojan, which sent only 4 to 16 malicious flows in the whole capture, and one Mirai capture with 82. Too quiet for volume or rhythm based detection.</p>
+<p class="muted">Most scenarios are the first 100,000 flows of the original capture, from a public mirror checked against the original log.</p>`
   },
   vi: {
     tagline:'SOC mini có AI', h1:'7 ngày của một mạng doanh nghiệp. <em>7 cuộc tấn công.</em> Một AI analyst.',
@@ -310,7 +327,13 @@ const T = {
 <li>Cridex: chỉ bắt được 1/5 ngày. C2 của nó lệch nhịp và đổi kích thước như HTTPS bình thường. Kiểm tra độ đều kích thước bắt được nó nhưng cũng báo nhầm telemetry của Microsoft, nên không đưa vào.</li>
 <li>{fp} báo nhầm chủ yếu đến từ BitTorrent thử lại peer, đồng bộ đám mây và telemetry (Dropbox, Microsoft, AWS) và NTP. Đó chính là hàng đợi AI analyst cần phân loại.</li>
 <li>Quét chậm từ Internet vào một máy: bắt được 1/6 ngày.</li>
-<li>Không dùng mô hình bất thường ở đây: bản ghi bắt đầu khi máy đã nhiễm nên không có baseline sạch để học.</li></ul>`
+<li>Không dùng mô hình bất thường ở đây: bản ghi bắt đầu khi máy đã nhiễm nên không có baseline sạch để học.</li></ul>`,
+    blindh:'Kiểm tra mù: IoT-23, chạy một lần, không sửa gì', devices:'Thiết bị nhiễm',
+    bk1:'thiết bị bị phát hiện', bk2:'độ chính xác cảnh báo', bk3:'báo nhầm / ngày', bk4:'flow',
+    blindnotes:`<p>Kết quả Windows ở trên có hai thay đổi được làm trong lúc xem chính dữ liệu đó. Để có một con số không ai bảo là "chỉnh cho đẹp", bộ phát hiện được giữ nguyên và chạy <b>đúng một lần</b> trên <b>IoT-23</b>: {caps} bản ghi thiết bị IoT Linux nhiễm Mirai, Torii, Hajime, Okiru và các botnet khác, một bộ dữ liệu khác với loại máy khác. Chỉ bộ đọc log được bổ sung để đọc định dạng của nó.</p>
+<p><b>Bắt được:</b> quét hàng loạt (Mirai, Hajime, Kenjiro, IRCBot, Muhstik) nhờ luật quét cổng, và nhịp C2 (Hakai, Hide and Seek) nhờ bộ dò beaconing.</p>
+<p><b>Bỏ sót:</b> Torii (2 ngày) và một Trojan chỉ gửi 4–16 flow độc hại trong cả bản ghi, cùng một bản ghi Mirai có 82 flow. Quá ít để phát hiện theo lưu lượng hay nhịp.</p>
+<p class="muted">Phần lớn kịch bản là 100.000 flow đầu của bản ghi gốc, lấy từ một bản sao công khai đã đối chiếu với log gốc.</p>`
   }
 };
 let lang = 'en', B = null, current = null, tab = 'report';
@@ -548,6 +571,17 @@ function renderReal(){
     return `<tr><td>${esc(f)}</td><td class="num mono">${v.hosts}</td><td class="num"><span class="pill" style="background:${bg};color:${c}">${v.detected}/${v.hosts}</span></td><td class="num mono">${v.true_alerts} / ${v.alerts}</td></tr>`; }).join('');
   $('#realtab').innerHTML = h + '</tbody>';
   $('#realnotes').innerHTML = t('realnotes').replace('{caps}', s.captures).replace('{fp}', s.alerts - Math.round(s.alerts * s.alert_precision));
+  if (RD.blind) {
+    const b = RD.blind.summary, dec = v => String(v).replace('.', lang === 'vi' ? ',' : '.');
+    $('#blind').hidden = false;
+    const fam = Object.entries(b.by_family).sort((x,y) => y[1].hosts - x[1].hosts || x[0].localeCompare(y[0]));
+    let h = `<thead><tr><th>${t('fam')}</th><th class="num">${t('devices')}</th><th class="num">${t('detected')}</th><th class="num">${t('talerts')}</th></tr></thead><tbody>`;
+    h += fam.map(([f,v]) => { const r = v.detected / v.hosts; const c = r >= .99 ? 'var(--ok)' : r >= .5 ? 'var(--med)' : 'var(--crit)'; const bg = r >= .99 ? 'rgba(61,220,151,.18)' : r >= .5 ? 'rgba(242,201,76,.16)' : 'rgba(255,77,106,.16)';
+      return `<tr><td>${esc(f)}</td><td class="num mono">${v.hosts}</td><td class="num"><span class="pill" style="background:${bg};color:${c}">${v.detected}/${v.hosts}</span></td><td class="num mono">${v.true_alerts} / ${v.alerts}</td></tr>`; }).join('');
+    $('#blindtab').innerHTML = h + '</tbody>';
+    const k = `<div class="blindk"><span><b style="color:var(--ok)">${Math.round(b.infected_hosts * b.infected_detected)}/${b.infected_hosts}</b>${t('bk1')}</span><span><b>${Math.round(b.alert_precision*100)}%</b>${t('bk2')}</span><span><b>${dec(b.false_alerts_per_day)}</b>${t('bk3')}</span><span><b>${(b.flows/1e6).toFixed(1).replace('.', lang === 'vi' ? ',' : '.')}M</b>${t('bk4')}</span></div>`;
+    $('#blindnotes').innerHTML = k + t('blindnotes').replace('{caps}', b.captures);
+  }
 }
 
 function renderAll(){ applyI18n(); renderChips(); renderKpis(); renderLegend(); renderQueue(); renderDetail(); renderEval(); renderReal(); drawTimeline(); }

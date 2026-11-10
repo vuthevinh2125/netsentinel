@@ -128,13 +128,31 @@ def run_all(root, verbose: bool = False) -> dict:
             "captures": [{k: v for k, v in s.items() if k != "alerts_detail"} for s in scores]}
 
 
-def markdown(res: dict) -> str:
+def markdown(res: dict, unit: str = "Infected host-days") -> str:
     s = res["summary"]
-    out = ["| Malware family | Infected host-days | Detected | Alerts | True alerts |", "|---|---|---|---|---|"]
+    out = [f"| Malware family | {unit} | Detected | Alerts | True alerts |", "|---|---|---|---|---|"]
     for fam, v in sorted(s["by_family"].items(), key=lambda kv: (-kv[1]["hosts"], kv[0])):
         out.append(f"| {fam} | {v['hosts']} | {v['detected']}/{v['hosts']} | {v['alerts']} | {v['true_alerts']} |")
     out.append("")
     out.append(f"{s['captures']} captures, {s['hours']:.0f} hours, {s['flows']:,} flows. "
-               f"Infected host-days detected: {s['infected_detected']:.0%}. Alert precision: {s['alert_precision']:.0%}. "
+               f"{unit} detected: {s['infected_detected']:.0%}. Alert precision: {s['alert_precision']:.0%}. "
                f"False alerts per day: {s['false_alerts_per_day']}.")
     return "\n".join(out)
+
+
+def run_iot23(root, verbose: bool = False) -> dict:
+    """Blind test on IoT-23: run once with the detectors exactly as tuned on the Windows captures."""
+    from . import iot23
+    scores = []
+    for path, n in iot23.captures(root):
+        data = iot23.load(path, n)
+        s = score_capture(data, detect.run(data))
+        s["truncated"] = data.meta["truncated"]
+        scores.append(s)
+        if verbose:
+            print(f"  IoT-23 {n:>2}-1 {s['family']:14s} alerts={s['alerts']:3d} true={s['true_alerts']:3d} "
+                  f"detected={s['detected']}", flush=True)
+    return {"dataset": "IoT-23 (Stratosphere Laboratory, CTU Prague)",
+            "source": "https://www.stratosphereips.org/datasets-iot23",
+            "summary": summarise(scores),
+            "captures": [{k: v for k, v in s.items() if k != "alerts_detail"} for s in scores]}
