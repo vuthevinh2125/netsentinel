@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # One command: ask for a Gemini key (hidden), find a model that answers, run the triage eval.
-# Usage:  bash scripts/run_triage_gemini.sh [sample_per_class]
+# Usage:  bash scripts/run_triage_gemini.sh [sample_per_class] [output.json]
 set -uo pipefail
 SAMPLE=${1:-30}
+OUT=${2:-docs/data/triage.json}
 URL=https://generativelanguage.googleapis.com/v1beta/openai
 cd "$(dirname "$0")/.."
 
@@ -37,4 +38,4 @@ echo "If it stops, run this script again: it continues where it left off."
 export NETSENTINEL_OPENAI_URL=$URL NETSENTINEL_OPENAI_KEY NETSENTINEL_MODEL=$MODEL
 export NETSENTINEL_MIN_INTERVAL=${NETSENTINEL_MIN_INTERVAL:-6} NETSENTINEL_REASONING=${NETSENTINEL_REASONING:-low}
 PY=python; command -v winpty >/dev/null 2>&1 && [ -t 1 ] && PY="winpty python"
-$PY -m netsentinel triage-eval --analyst openai --sample "$SAMPLE" --resume
+$PY -m netsentinel triage-eval --analyst openai --sample "$SAMPLE" --resume --out "$OUT"

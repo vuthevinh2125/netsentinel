@@ -111,3 +111,14 @@ def test_triage_survives_a_failing_case():
     assert res["errors"] == 1 and res["attacks_closed"] == 0.0 and saved == [1]
     again = triage.run(Broken(), cases, done={(r["capture"], r["incident_id"]): r for r in res["rows"]})
     assert again["cases"] == 1
+
+
+def test_tools_say_what_the_data_cannot_show():
+    from netsentinel.agent import triage
+    cases = triage.build_cases([stratosphere.load(FIX / "000-zeek-malicious")])
+    ws = cases[0]["ws"]
+    ctx = ws.call("destination_context", {"ip": "93.184.216.34"})
+    assert any("no DNS log" in n for n in ctx["data_notes"])
+    assert any("Only one machine is monitored" in n for n in ctx["data_notes"])
+    peers = ws.call("host_peer_summary", {"ip": "192.168.1.50"})
+    assert peers["peers_with_a_regular_rhythm"] == 1 and peers["external_peers"] >= 2

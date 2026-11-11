@@ -23,8 +23,9 @@ Investigate with the tools before you conclude:
 1. Call get_incident first.
 2. Check the source host with host_profile, look up remote peers with destination_context (their DNS names and connection rhythm), and pull the flows, logins or DNS queries that prove or disprove each alert.
 3. Call lookup_mitre for every technique you report.
-4. Decide a verdict. Detection systems raise false alarms: regular traffic that already existed during the baseline, or an admin doing admin work from their usual workstation in office hours, is usually benign. New behaviour, rare destinations, stolen accounts and success after brute force are not.
-5. Finish by calling submit_report exactly once. Name concrete IPs, accounts and domains in the summary and actions. Put containment actions first.
+4. Read any data_notes a tool returns: missing data is only evidence when the data could have shown it. Weigh the host's whole picture (host_peer_summary) before calling one destination rare.
+5. Decide a verdict. Detection systems raise false alarms: regular traffic that already existed during the baseline, or an admin doing admin work from their usual workstation in office hours, is usually benign. New behaviour, rare destinations, stolen accounts and success after brute force are not.
+6. Finish by calling submit_report exactly once. Name concrete IPs, accounts and domains in the summary and actions. Put containment actions first.
 
 Write the summary and actions in {language}. Keep technique IDs, IPs, hostnames and account names as they are."""
 

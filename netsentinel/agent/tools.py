@@ -121,6 +121,9 @@ class Workspace:
             hit = d[d["answers"].str.contains(ip, regex=False, na=False)]
             names = hit["query"].value_counts().head(5).index.tolist()
         out = {"ip": ip, "dns_names": names, "connections": int(len(q))}
+        notes = self._data_notes()
+        if notes:
+            out["data_notes"] = notes
         if q.empty:
             return out
         gaps = q.ts.sort_values().diff().dropna()
@@ -138,6 +141,62 @@ class Workspace:
             "first": fmt(q.ts.min()), "last": fmt(q.ts.max()),
             "hours_active": int(((q.ts - q.ts.min()) // 3600).nunique()),
         })
+        return out
+
+    def _data_notes(self) -> list[str]:
+        """What this dataset cannot show, so an analyst does not read missing data as evidence."""
+        if hasattr(self, "_notes_cache"):
+            return self._notes_cache
+        notes = []
+        d, f = self.data.dns, self.data.flows
+        answered = int((d["answers"].fillna("") != "").sum()) if "answers" in d.columns and len(d) else 0
+        if len(d) == 0:
+            notes.append("This capture has no DNS log: an empty dns_names list says nothing about a destination.")
+        elif answered < 0.05 * len(d):
+            notes.append(f"Only {answered} of {len(d)} DNS queries in this capture recorded an answer: an empty "
+                         "dns_names list is normal here and is not evidence of a hardcoded IP.")
+        monitored = self.data.meta.get("home_hosts") or []
+        if len(monitored) <= 1 and self.data.meta.get("baseline_days", 1) == 0:
+            notes.append("Only one machine is monitored in this capture, so every destination is contacted by "
+                         "just this one host: internal_sources = 1 is expected and is not evidence.")
+        self._notes_cache = notes
+        return notes
+
+    def host_peer_summary(self, ip: str) -> dict:
+        """The whole picture of a host's outbound traffic: how many peers, which ports, how many periodic."""
+        f = self.data.flows
+        q = f[(f.src_ip == ip) & ~internal_mask(f.dst_ip)]
+        if q.empty:
+            return {"ip": ip, "external_peers": 0}
+        g = q.groupby("dst_ip")
+        sizes = g.size()
+        periodic = 0
+        intervals = []
+        for dst, n in sizes[sizes >= 10].items():
+            ts = q.loc[q.dst_ip == dst, "ts"].sort_values().diff().dropna()
+            ts = ts[ts > 0]
+            if len(ts) < 5:
+                continue
+            med = float(ts.median())
+            if med > 0 and float((ts - med).abs().median() / med) < 0.2:
+                periodic += 1
+                intervals.append(med)
+        ports = q.dst_port
+        out = {
+            "ip": ip,
+            "external_peers": int(sizes.size),
+            "distinct_remote_ports": int(ports.nunique()),
+            "share_udp": round(float((q.proto == "udp").mean()), 3),
+            "share_to_ports_above_1024": round(float((ports > 1024).mean()), 3),
+            "top_remote_ports": ports.value_counts().head(8).to_dict(),
+            "peers_with_a_regular_rhythm": periodic,
+            "their_intervals_s": {"min": round(min(intervals), 1), "median": round(sorted(intervals)[len(intervals) // 2], 1),
+                                  "max": round(max(intervals), 1)} if intervals else None,
+            "share_unanswered": round(float(((q.bytes_in == 0) & (q.packets <= 3)).mean()), 3),
+        }
+        notes = self._data_notes()
+        if notes:
+            out["data_notes"] = notes
         return out
 
     def lookup_mitre(self, technique_id: str) -> dict:
@@ -164,6 +223,7 @@ TOOL_FUNCS = {
     "dns_queries": Workspace.dns_queries,
     "lookup_mitre": Workspace.lookup_mitre,
     "destination_context": Workspace.destination_context,
+    "host_peer_summary": Workspace.host_peer_summary,
 }
 
 _TIME = {"type": "number", "description": "Unix timestamp (seconds). Optional."}
@@ -183,6 +243,8 @@ TOOL_SCHEMAS = [
      "input_schema": {"type": "object", "properties": {"ip": {"type": "string"}, "start": _TIME, "end": _TIME}, "required": ["ip"]}},
     {"name": "destination_context", "description": "Context on a remote peer: DNS names that resolved to it, how many internal hosts talk to it, ports, protocols, connection rhythm (median interval, jitter), typical bytes, share of unanswered attempts, active hours. Pass src to limit to one source host.",
      "input_schema": {"type": "object", "properties": {"ip": {"type": "string"}, "src": {"type": "string"}}, "required": ["ip"]}},
+    {"name": "host_peer_summary", "description": "The whole picture of a host's traffic to the Internet: how many external peers, how many remote ports, share of UDP and of high ports, the most used remote ports, and how many peers it contacts on a regular rhythm. Use it to tell one rare destination apart from an application that talks to hundreds of peers. Includes notes on what this dataset cannot show.",
+     "input_schema": {"type": "object", "properties": {"ip": {"type": "string"}}, "required": ["ip"]}},
     {"name": "lookup_mitre", "description": "Look up a MITRE ATT&CK technique: tactic, what it means, how to respond.",
      "input_schema": {"type": "object", "properties": {"technique_id": {"type": "string"}}, "required": ["technique_id"]}},
     {"name": "submit_report", "description": "Finish the investigation with a structured incident report. Call exactly once, last.",
