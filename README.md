@@ -88,9 +88,12 @@ Detection is half the job; the other half is the queue. On the real captures the
 |---|---|---|---|
 | Escalate everything (no triage) | 0% | 0% | 386 |
 | Playbook analyst (written for the lab) | 0% | 0% | 386 |
+| Gemini 3.1 Flash-Lite (free tier), 30 + 30 sample | **13%** (4/30) | **3%** (1/30) | 55 of 60 |
 | Claude | run it: see below | | |
 
 The playbook's rules only recognise the lab's two benign patterns, so on real traffic it closes nothing. That is the gap a model has to fill, and the eval is built so it cannot fill it by closing everything: one wrongly closed attack costs more than many escalated false alarms. These captures carry almost no DNS answers, so the analyst has to judge mostly from rhythm, ports and volume.
+
+What the first model run shows: Gemini 3.1 Flash-Lite closed all 3 large-upload false alarms correctly but **none of the 25 false beaconing alerts**. Without DNS names, a sync client's steady HTTPS to a cloud IP looks exactly like malware calling home, so the model stays cautious. It never closed a real C2 beacon; its one wrong close was an inbound port scan from the Internet against a clean machine, which the lab labels malicious and many SOCs would treat as background noise. Safe, but not yet useful: the next step is giving the analyst better evidence, not a looser prompt.
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...                       # your key, never committed
