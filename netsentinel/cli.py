@@ -187,7 +187,8 @@ def main(argv=None) -> int:
                                       indent=1, default=_py), encoding="utf-8")
         res = triage.run(an, cases, a.language, verbose=True, checkpoint=checkpoint, done=done)
         out.write_text(json.dumps(res, ensure_ascii=False, indent=1, default=_py), encoding="utf-8")
-        print(f"false alarms closed: {res['noise_closed']:.0%}   real attacks wrongly closed: {res['attacks_closed']:.0%}   "
+        pct = lambda v: "n/a" if v is None else f"{v:.0%}"
+        print(f"false alarms closed: {pct(res['noise_closed'])}   real attacks wrongly closed: {pct(res['attacks_closed'])}   "
               f"queue {res['cases']} -> {res['analyst_queue_after_triage']}   errors {res['errors']}   -> {out}")
     return 0
 

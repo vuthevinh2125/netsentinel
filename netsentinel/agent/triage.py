@@ -17,6 +17,7 @@ import time
 
 from .. import detect
 from ..datasets import realeval
+from .analyst import QuotaExhausted
 from .tools import Workspace
 
 
@@ -79,6 +80,10 @@ def run(analyst, cases: list[dict], language: str = "en", verbose: bool = False,
         try:
             rep = analyst.investigate(c["ws"], c["incident_id"], language)
             verdict, conf, ntools, summary = rep.verdict, rep.confidence, len(rep.trace), rep.summary
+        except QuotaExhausted as e:                 # nothing will work until the quota resets: stop, keep what is done
+            if verbose:
+                print(f"  stopped: {e}\n  Run the same command again after the quota resets; finished cases are kept.", flush=True)
+            break
         except Exception as e:                      # one failed case is escalated, never fatal for the run
             verdict, conf, ntools, summary = "error", 0.0, 0, f"{type(e).__name__}: {str(e)[:300]}"
         closed = verdict == "benign"

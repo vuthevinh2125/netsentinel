@@ -122,3 +122,17 @@ def test_tools_say_what_the_data_cannot_show():
     assert any("Only one machine is monitored" in n for n in ctx["data_notes"])
     peers = ws.call("host_peer_summary", {"ip": "192.168.1.50"})
     assert peers["peers_with_a_regular_rhythm"] == 1 and peers["external_peers"] >= 2
+
+
+def test_triage_stops_when_quota_is_used_up():
+    from netsentinel.agent import triage
+    from netsentinel.agent.analyst import QuotaExhausted
+
+    class OutOfQuota:
+        name = "out-of-quota"
+        def investigate(self, *a, **k):
+            raise QuotaExhausted("429 quota exceeded per day")
+
+    cases = triage.build_cases([stratosphere.load(FIX / "000-zeek-malicious")]) * 3
+    res = triage.run(OutOfQuota(), cases)
+    assert res["cases"] == 0      # stopped at once, nothing recorded as a verdict

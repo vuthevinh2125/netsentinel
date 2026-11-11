@@ -118,6 +118,10 @@ class ClaudeAnalyst:
                       seconds=round(time.time() - t0, 1), language=language)
 
 
+class QuotaExhausted(RuntimeError):
+    """The provider refuses until its quota resets: stop the run instead of retrying every case."""
+
+
 # ------------------------------------------------------- OpenAI-compatible analyst
 class OpenAICompatAnalyst:
     """The same tool-use loop over any OpenAI-compatible /chat/completions endpoint:
@@ -167,6 +171,9 @@ class OpenAICompatAnalyst:
                 last_err = e
                 time.sleep(min(60, 5 * 2 ** attempt))
                 continue
+            body = r.text.lower() if r.status_code == 429 else ""
+            if r.status_code == 429 and ("per day" in body or "perday" in body or "daily" in body or "quota exceeded" in body):
+                raise QuotaExhausted(f"The provider's quota is used up: {r.text[:300]}")
             if r.status_code in (429, 500, 502, 503, 504):   # rate limited or busy: back off and retry
                 time.sleep(min(60, 5 * 2 ** attempt))
                 continue
