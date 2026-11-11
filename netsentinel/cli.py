@@ -119,6 +119,7 @@ def main(argv=None) -> int:
     tr.add_argument("--sample", type=int, default=None, help="at most N attacks and N false alarms (cost control)")
     tr.add_argument("--language", choices=["en", "vi"], default="en")
     tr.add_argument("--out", default="docs/data/triage.json")
+    tr.add_argument("--resume", action="store_true", help="skip cases already in --out and continue")
     a = p.parse_args(argv)
 
     if a.cmd == "run":
@@ -167,12 +168,21 @@ def main(argv=None) -> int:
         an = triage.EscalateAll() if a.analyst == "escalate-all" else _analyst(a.analyst)
         print(f"{len(cases)} alerts ({sum(c['malicious'] for c in cases)} attacks, "
               f"{sum(not c['malicious'] for c in cases)} false alarms), analyst={an.name}", flush=True)
-        res = triage.run(an, cases, a.language, verbose=True)
         out = Path(a.out)
         out.parent.mkdir(parents=True, exist_ok=True)
+        done = {}
+        if a.resume and out.exists():
+            prev = json.loads(out.read_text(encoding="utf-8"))
+            done = {(r["capture"], r["incident_id"]): r for r in prev.get("rows", []) if r["verdict"] != "error"}
+            print(f"resuming: {len(done)} cases already done", flush=True)
+
+        def checkpoint(rows):
+            out.write_text(json.dumps({"analyst": an.name, "partial": True, "rows": rows}, ensure_ascii=False,
+                                      indent=1, default=_py), encoding="utf-8")
+        res = triage.run(an, cases, a.language, verbose=True, checkpoint=checkpoint, done=done)
         out.write_text(json.dumps(res, ensure_ascii=False, indent=1, default=_py), encoding="utf-8")
         print(f"false alarms closed: {res['noise_closed']:.0%}   real attacks wrongly closed: {res['attacks_closed']:.0%}   "
-              f"queue {res['cases']} -> {res['analyst_queue_after_triage']}   -> {out}")
+              f"queue {res['cases']} -> {res['analyst_queue_after_triage']}   errors {res['errors']}   -> {out}")
     return 0
 
 

@@ -132,6 +132,7 @@ def host_windows(flows: pd.DataFrame, auth: pd.DataFrame, dns: pd.DataFrame, kno
     df = pd.DataFrame({"dns_q": dg.size(), "dns_mean_len": dg.flen.mean(), "dns_entropy": dg.fent.mean(),
                        "dns_long_q": d.groupby(["src_ip", "win"])["long"].sum()})
 
-    out = feat.join(af, how="outer").join(df, how="outer").fillna(0.0)
+    out = feat.join(af, how="outer").join(df, how="outer")
+    out = out.infer_objects().fillna(0.0)
     out = out.reset_index()
     return out[["src_ip", "win"] + FEATURES]

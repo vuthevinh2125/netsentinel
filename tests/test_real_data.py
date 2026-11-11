@@ -95,3 +95,19 @@ def test_triage_eval_with_scripted_claude():
     res = triage.run(ClaudeAnalyst(transport=transport), cases)
     assert res["attacks_closed"] == 1.0 and res["noise_closed"] is None
     assert res["rows"][0]["tools_used"] == 3
+
+
+def test_triage_survives_a_failing_case():
+    from netsentinel.agent import triage
+
+    class Broken:
+        name = "broken"
+        def investigate(self, *a, **k):
+            raise TimeoutError("read timed out")
+
+    cases = triage.build_cases([stratosphere.load(FIX / "000-zeek-malicious")])
+    saved = []
+    res = triage.run(Broken(), cases, checkpoint=lambda rows: saved.append(len(rows)))
+    assert res["errors"] == 1 and res["attacks_closed"] == 0.0 and saved == [1]
+    again = triage.run(Broken(), cases, done={(r["capture"], r["incident_id"]): r for r in res["rows"]})
+    assert again["cases"] == 1

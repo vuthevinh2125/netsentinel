@@ -65,19 +65,34 @@ def build_cases(loader_items, sample_per_class: int | None = None, seed: int = 7
     return cases
 
 
-def run(analyst, cases: list[dict], language: str = "en", verbose: bool = False) -> dict:
+def run(analyst, cases: list[dict], language: str = "en", verbose: bool = False,
+        checkpoint=None, done: dict | None = None) -> dict:
+    """checkpoint(rows) is called after every case; done maps (capture, incident_id) to rows from an earlier run."""
     rows = []
+    done = done or {}
     for i, c in enumerate(cases, 1):
+        key = (c["capture"], c["incident_id"])
+        if key in done:
+            rows.append(done[key])
+            continue
         t0 = time.time()
-        rep = analyst.investigate(c["ws"], c["incident_id"], language)
-        closed = rep.verdict == "benign"
+        try:
+            rep = analyst.investigate(c["ws"], c["incident_id"], language)
+            verdict, conf, ntools, summary = rep.verdict, rep.confidence, len(rep.trace), rep.summary
+        except Exception as e:                      # one failed case is escalated, never fatal for the run
+            verdict, conf, ntools, summary = "error", 0.0, 0, f"{type(e).__name__}: {str(e)[:300]}"
+        closed = verdict == "benign"
         rows.append({k: c[k] for k in ("capture", "family", "detector", "malicious", "malicious_share", "incident_id")}
-                    | {"verdict": rep.verdict, "closed": closed, "confidence": rep.confidence,
-                       "tools_used": len(rep.trace), "seconds": round(time.time() - t0, 1), "summary": rep.summary})
+                    | {"verdict": verdict, "closed": closed, "confidence": conf,
+                       "tools_used": ntools, "seconds": round(time.time() - t0, 1), "summary": summary})
+        if checkpoint:
+            checkpoint(rows)
+        rep_verdict = verdict
         if verbose:
             mark = "!! " if (closed and c["malicious"]) else "   "
             print(f"  [{i:3d}/{len(cases)}] {mark}{c['capture'][:20]:20s} {c['detector']:18s} "
-                  f"truth={'attack' if c['malicious'] else 'false-alarm':11s} verdict={rep.verdict}", flush=True)
+                  f"truth={'attack' if c['malicious'] else 'false-alarm':11s} verdict={rep_verdict} "
+                  f"({rows[-1]['seconds']:.0f}s)", flush=True)
     mal = [r for r in rows if r["malicious"]]
     ben = [r for r in rows if not r["malicious"]]
     by_det = {}
@@ -96,5 +111,6 @@ def run(analyst, cases: list[dict], language: str = "en", verbose: bool = False)
         "noise_closed": round(sum(r["closed"] for r in ben) / len(ben), 3) if ben else None,
         "attacks_closed": round(sum(r["closed"] for r in mal) / len(mal), 3) if mal else None,
         "analyst_queue_after_triage": sum(not r["closed"] for r in rows),
+        "errors": sum(r["verdict"] == "error" for r in rows),
         "by_detector": by_det, "rows": rows,
     }

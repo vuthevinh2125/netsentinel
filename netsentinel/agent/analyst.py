@@ -138,6 +138,9 @@ class OpenAICompatAnalyst:
         self.max_turns = max_turns
         # free tiers limit requests per minute: space calls out instead of failing
         self.min_interval_s = float(os.environ.get("NETSENTINEL_MIN_INTERVAL", min_interval_s if min_interval_s is not None else 0))
+        # optional: "none" / "low" / "medium" / "high" for models that think before answering (faster when low)
+        self.reasoning = os.environ.get("NETSENTINEL_REASONING", "")
+        self.timeout_s = float(os.environ.get("NETSENTINEL_TIMEOUT", 120))
         self._last = 0.0
 
     @staticmethod
@@ -150,20 +153,29 @@ class OpenAICompatAnalyst:
         headers = {"content-type": "application/json"}
         if self.api_key:
             headers["authorization"] = f"Bearer {self.api_key}"
+        last_err = None
+        r = None
         for attempt in range(6):
             wait = self.min_interval_s - (time.time() - self._last)
             if wait > 0:
                 time.sleep(wait)
             self._last = time.time()
-            r = requests.post(f"{self.base_url}/chat/completions", headers=headers, json=payload, timeout=180)
-            if r.status_code in (429, 500, 502, 503):        # rate limited or busy: back off and retry
+            try:
+                r = requests.post(f"{self.base_url}/chat/completions", headers=headers, json=payload, timeout=self.timeout_s)
+            except (requests.Timeout, requests.ConnectionError) as e:   # slow or dropped: wait and try again
+                last_err = e
+                time.sleep(min(60, 5 * 2 ** attempt))
+                continue
+            if r.status_code in (429, 500, 502, 503, 504):   # rate limited or busy: back off and retry
                 time.sleep(min(60, 5 * 2 ** attempt))
                 continue
             if r.status_code >= 400:
                 raise RuntimeError(f"{r.status_code} from {self.base_url}/chat/completions (model={self.model!r}): "
                                    f"{r.text[:400]}\nCheck NETSENTINEL_MODEL against the provider's model list.")
             return r.json()
-        raise RuntimeError(f"Still rate limited after retries ({r.status_code}): {r.text[:300]}")
+        if r is None:
+            raise RuntimeError(f"No response from {self.base_url} after retries: {last_err}")
+        raise RuntimeError(f"Still failing after retries ({r.status_code}): {r.text[:300]}")
 
     @staticmethod
     def _tools() -> list[dict]:
@@ -179,8 +191,11 @@ class OpenAICompatAnalyst:
         trace: list[dict] = []
         sev = ws.incidents[incident_id].severity
         for _ in range(self.max_turns):
-            resp = self.transport({"model": self.model, "messages": list(messages), "tools": self._tools(),
-                                   "tool_choice": "auto", "temperature": 0})
+            payload = {"model": self.model, "messages": list(messages), "tools": self._tools(),
+                       "tool_choice": "auto", "temperature": 0}
+            if self.reasoning:
+                payload["reasoning_effort"] = self.reasoning
+            resp = self.transport(payload)
             msg = (resp.get("choices") or [{}])[0].get("message", {}) or {}
             calls = msg.get("tool_calls") or []
             messages.append({"role": "assistant", "content": msg.get("content") or "", **({"tool_calls": calls} if calls else {})})
