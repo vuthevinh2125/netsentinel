@@ -159,10 +159,11 @@ class OpenAICompatAnalyst:
             if r.status_code in (429, 500, 502, 503):        # rate limited or busy: back off and retry
                 time.sleep(min(60, 5 * 2 ** attempt))
                 continue
-            r.raise_for_status()
+            if r.status_code >= 400:
+                raise RuntimeError(f"{r.status_code} from {self.base_url}/chat/completions (model={self.model!r}): "
+                                   f"{r.text[:400]}\nCheck NETSENTINEL_MODEL against the provider's model list.")
             return r.json()
-        r.raise_for_status()
-        return r.json()
+        raise RuntimeError(f"Still rate limited after retries ({r.status_code}): {r.text[:300]}")
 
     @staticmethod
     def _tools() -> list[dict]:
