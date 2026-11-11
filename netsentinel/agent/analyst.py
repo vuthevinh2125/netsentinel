@@ -117,6 +117,99 @@ class ClaudeAnalyst:
                       seconds=round(time.time() - t0, 1), language=language)
 
 
+# ------------------------------------------------------- OpenAI-compatible analyst
+class OpenAICompatAnalyst:
+    """The same tool-use loop over any OpenAI-compatible /chat/completions endpoint:
+    Gemini (Google AI Studio free tier), Ollama on your own machine, Groq, OpenRouter and others.
+
+    NETSENTINEL_OPENAI_URL  base URL, e.g. https://generativelanguage.googleapis.com/v1beta/openai
+                            or http://localhost:11434/v1 for Ollama
+    NETSENTINEL_OPENAI_KEY  API key (any non-empty string for Ollama)
+    NETSENTINEL_MODEL       model name
+    """
+
+    def __init__(self, model: str | None = None, api_key: str | None = None, base_url: str | None = None,
+                 transport=None, max_turns: int = 14, min_interval_s: float | None = None):
+        self.model = model or os.environ.get("NETSENTINEL_MODEL", "")
+        self.api_key = api_key or os.environ.get("NETSENTINEL_OPENAI_KEY", "")
+        self.base_url = (base_url or os.environ.get("NETSENTINEL_OPENAI_URL", "")).rstrip("/")
+        self.name = f"openai-compatible:{self.model}" if self.model else "openai-compatible"
+        self.transport = transport or self._http
+        self.max_turns = max_turns
+        # free tiers limit requests per minute: space calls out instead of failing
+        self.min_interval_s = float(os.environ.get("NETSENTINEL_MIN_INTERVAL", min_interval_s if min_interval_s is not None else 0))
+        self._last = 0.0
+
+    @staticmethod
+    def available() -> bool:
+        return bool(os.environ.get("NETSENTINEL_OPENAI_URL") and os.environ.get("NETSENTINEL_MODEL"))
+
+    def _http(self, payload: dict) -> dict:
+        import requests
+
+        headers = {"content-type": "application/json"}
+        if self.api_key:
+            headers["authorization"] = f"Bearer {self.api_key}"
+        for attempt in range(6):
+            wait = self.min_interval_s - (time.time() - self._last)
+            if wait > 0:
+                time.sleep(wait)
+            self._last = time.time()
+            r = requests.post(f"{self.base_url}/chat/completions", headers=headers, json=payload, timeout=180)
+            if r.status_code in (429, 500, 502, 503):        # rate limited or busy: back off and retry
+                time.sleep(min(60, 5 * 2 ** attempt))
+                continue
+            r.raise_for_status()
+            return r.json()
+        r.raise_for_status()
+        return r.json()
+
+    @staticmethod
+    def _tools() -> list[dict]:
+        return [{"type": "function", "function": {"name": t["name"], "description": t["description"],
+                                                   "parameters": t["input_schema"]}} for t in TOOL_SCHEMAS]
+
+    def investigate(self, ws: Workspace, incident_id: str, language: str = "en") -> Report:
+        t0 = time.time()
+        lang = "Vietnamese" if language == "vi" else "English"
+        system = SYSTEM_PROMPT.format(language=lang, network=ws.data.meta.get("network_description", LAB_NETWORK))
+        messages = [{"role": "system", "content": system},
+                    {"role": "user", "content": f"Investigate incident {incident_id} and submit your report."}]
+        trace: list[dict] = []
+        sev = ws.incidents[incident_id].severity
+        for _ in range(self.max_turns):
+            resp = self.transport({"model": self.model, "messages": list(messages), "tools": self._tools(),
+                                   "tool_choice": "auto", "temperature": 0})
+            msg = (resp.get("choices") or [{}])[0].get("message", {}) or {}
+            calls = msg.get("tool_calls") or []
+            messages.append({"role": "assistant", "content": msg.get("content") or "", **({"tool_calls": calls} if calls else {})})
+            if not calls:
+                return Report(incident_id, self.name, "needs_review", 0.3, sev,
+                              (msg.get("content") or "The model stopped without submitting a report.").strip(),
+                              trace=trace, seconds=round(time.time() - t0, 1), language=language)
+            for c in calls:
+                fn = c.get("function", {})
+                try:
+                    args = json.loads(fn.get("arguments") or "{}")
+                except json.JSONDecodeError:
+                    args = {}
+                if fn.get("name") == "submit_report":
+                    trace.append({"step": len(trace) + 1, "tool": "submit_report", "input": args, "output": "report submitted"})
+                    v = args.get("verdict", "needs_review")
+                    v = v if v in ("true_positive", "benign", "needs_review") else "needs_review"
+                    return Report(incident_id, self.name, v, float(args.get("confidence", 0.5) or 0.5),
+                                  args.get("severity", "medium"), args.get("summary", ""), args.get("attack_chain", []) or [],
+                                  args.get("affected_hosts", []) or [], args.get("techniques", []) or [],
+                                  args.get("actions", []) or [], trace, round(time.time() - t0, 1), language)
+                out = ws.call(fn.get("name", ""), args)
+                trace.append({"step": len(trace) + 1, "tool": fn.get("name"), "input": args, "output": _preview(out)})
+                messages.append({"role": "tool", "tool_call_id": c.get("id", ""), "name": fn.get("name", ""),
+                                 "content": json.dumps(out, ensure_ascii=False, default=str)})
+        return Report(incident_id, self.name, "needs_review", 0.3, sev,
+                      "Investigation hit the step limit before a report was submitted.", trace=trace,
+                      seconds=round(time.time() - t0, 1), language=language)
+
+
 # ------------------------------------------------------------- offline analyst
 _T = {
     "en": {

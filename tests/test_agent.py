@@ -1,3 +1,4 @@
+import json
 import pytest
 
 from netsentinel import detect
@@ -75,3 +76,32 @@ def test_benign_incidents_are_recognised(ws):
     assert len(benign) == 2   # the monitoring heartbeat and the admin's software push
     for inc in benign:
         assert PlaybookAnalyst().investigate(ws, inc).verdict == "benign"
+
+
+def test_openai_compatible_analyst_loop():
+    """Same investigation over an OpenAI-style API (Gemini, Ollama...): tool calls resolve, report parsed."""
+    from netsentinel.agent.analyst import OpenAICompatAnalyst
+    from netsentinel.agent.tools import Workspace
+    from netsentinel import detect
+    from netsentinel.simulate import generate
+
+    data = generate(seed=7, days=7)
+    ws = Workspace(data, detect.run(data))
+    iid = next(iter(ws.incidents))
+    seen = []
+
+    def transport(payload):
+        msgs = payload["messages"]
+        seen.append(len(msgs))
+        assert payload["tools"][0]["type"] == "function"
+        if len(msgs) == 2:
+            return {"choices": [{"message": {"content": None, "tool_calls": [
+                {"id": "c1", "type": "function", "function": {"name": "get_incident", "arguments": json.dumps({"incident_id": iid})}}]}}]}
+        assert msgs[-1]["role"] == "tool" and iid in msgs[-1]["content"]
+        return {"choices": [{"message": {"content": "", "tool_calls": [
+            {"id": "c2", "type": "function", "function": {"name": "submit_report", "arguments": json.dumps(
+                {"verdict": "true_positive", "confidence": 0.9, "severity": "high", "summary": "ok", "actions": ["isolate"]})}}]}}]}
+
+    rep = OpenAICompatAnalyst(model="test-model", base_url="http://x", transport=transport).investigate(ws, iid)
+    assert rep.verdict == "true_positive" and rep.analyst == "openai-compatible:test-model"
+    assert [t["tool"] for t in rep.trace] == ["get_incident", "submit_report"] and seen == [2, 4]

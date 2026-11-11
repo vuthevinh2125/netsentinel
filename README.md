@@ -98,6 +98,21 @@ python -m netsentinel triage-eval --analyst claude --sample 30   # 30 attacks + 
 python -m netsentinel triage-eval --analyst claude --iot23 data/iot23   # everything
 ```
 
+No paid API? Any OpenAI-compatible endpoint works with the same tools and the same grading, and the results are reported under that model's name:
+
+```bash
+# Gemini, Google AI Studio free tier (key from aistudio.google.com)
+export NETSENTINEL_OPENAI_URL=https://generativelanguage.googleapis.com/v1beta/openai
+export NETSENTINEL_OPENAI_KEY=...        NETSENTINEL_MODEL=<a current Gemini Flash model>
+export NETSENTINEL_MIN_INTERVAL=6         # stay under the free tier's requests-per-minute limit
+python -m netsentinel triage-eval --analyst openai --sample 30
+
+# Ollama on your own machine, fully offline
+ollama pull qwen2.5:7b
+export NETSENTINEL_OPENAI_URL=http://localhost:11434/v1 NETSENTINEL_OPENAI_KEY=ollama NETSENTINEL_MODEL=qwen2.5:7b
+python -m netsentinel triage-eval --analyst openai --sample 30
+```
+
 ## How it works
 
 ```
@@ -120,7 +135,7 @@ flows · logins · DNS ───────────────────
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q                         # 23 tests
+python -m pytest -q                         # 24 tests
 python -m netsentinel compare               # the table above
 python -m netsentinel run --seed 11         # new network, writes docs/data/demo.json
 python -m netsentinel agent-eval            # grade the analyst

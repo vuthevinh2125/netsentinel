@@ -18,12 +18,14 @@ import numpy as np
 
 from . import __version__, detect, evaluate, mitre
 from .agent import evals
-from .agent.analyst import ClaudeAnalyst, PlaybookAnalyst
+from .agent.analyst import ClaudeAnalyst, OpenAICompatAnalyst, PlaybookAnalyst
 from .agent.tools import Workspace, fmt
 from .simulate import DAY, TECHNIQUES, generate
 
 
 def _analyst(name: str):
+    if name == "openai":
+        return OpenAICompatAnalyst()
     if name == "claude" or (name == "auto" and ClaudeAnalyst.available()):
         return ClaudeAnalyst()
     return PlaybookAnalyst()
@@ -112,7 +114,8 @@ def main(argv=None) -> int:
     tr = sub.add_parser("triage-eval", help="grade an analyst's alert triage on real labelled captures")
     tr.add_argument("--data", default="data/stratosphere")
     tr.add_argument("--iot23", default=None)
-    tr.add_argument("--analyst", choices=["auto", "playbook", "claude", "escalate-all"], default="auto")
+    tr.add_argument("--analyst", choices=["auto", "playbook", "claude", "openai", "escalate-all"], default="auto",
+                    help="openai = any OpenAI-compatible API (Gemini free tier, Ollama, Groq...)")
     tr.add_argument("--sample", type=int, default=None, help="at most N attacks and N false alarms (cost control)")
     tr.add_argument("--language", choices=["en", "vi"], default="en")
     tr.add_argument("--out", default="docs/data/triage.json")
