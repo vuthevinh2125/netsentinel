@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -166,6 +167,11 @@ def main(argv=None) -> int:
                     yield iot23.load(path, n)
         cases = triage.build_cases(items(), sample_per_class=a.sample)
         an = triage.EscalateAll() if a.analyst == "escalate-all" else _analyst(a.analyst)
+        if a.analyst == "openai":
+            missing = [v for v in ("NETSENTINEL_OPENAI_URL", "NETSENTINEL_OPENAI_KEY", "NETSENTINEL_MODEL") if not os.environ.get(v)]
+            if missing:
+                print("Missing: " + ", ".join(missing) + ". Set them with export before running.")
+                return 2
         print(f"{len(cases)} alerts ({sum(c['malicious'] for c in cases)} attacks, "
               f"{sum(not c['malicious'] for c in cases)} false alarms), analyst={an.name}", flush=True)
         out = Path(a.out)
