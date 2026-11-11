@@ -58,7 +58,9 @@ def load(path: str | Path, capture: int) -> LabData:
             "original_name": f"CTU-IoT-Malware-Capture-{capture}-1", "start_ts": float(flows.ts.min()),
             "days": float((flows.ts.max() - flows.ts.min()) / 86400), "baseline_days": 0, "home_hosts": [home],
             "timezone": "UTC", "source": "IoT-23, Stratosphere Laboratory, CTU Prague",
-            "truncated": path.suffix == ".csv"}
+            "truncated": path.suffix == ".csv",
+            "network_description": ("a real capture of one Linux IoT device (IoT-23, Stratosphere Laboratory, CTU Prague). "
+                                    "There is no clean baseline period and no DNS log. Times are shown in UTC+7")}
     return LabData(flows, pd.DataFrame(columns=AUTH_COLUMNS), dns, [], hosts, meta)
 
 

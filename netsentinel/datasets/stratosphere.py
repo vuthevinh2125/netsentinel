@@ -24,6 +24,13 @@ AUTH_COLUMNS = ["ts", "src_ip", "dst_ip", "user", "service", "result", "label", 
 DUPLICATES = {"032-zeek-malicious": "014-zeek-malicious"}
 
 
+NETWORK_DESCRIPTION = (
+    "a real capture of one monitored Windows machine on a university network (Stratosphere Laboratory, "
+    "CTU Prague), about a day of traffic. There is no clean baseline period: the machine may have been "
+    "infected from the first minute, or may be a normal user's machine. Other machines on "
+    "the same network and Internet hosts appear only as peers. Times are shown in UTC+7")
+
+
 def _num(s: pd.Series) -> pd.Series:
     return pd.to_numeric(s, errors="coerce").fillna(0)
 
@@ -78,10 +85,11 @@ def load(capture_dir: str | Path) -> LabData:
             "label": _label(z["label"]) if "label" in z else "background",
             "attack_id": "",
             "rcode": z.get("rcode_name", pd.Series([""] * len(z))).fillna("").astype(str),
+            "answers": z.get("answers", pd.Series([""] * len(z))).fillna("").astype(str),
         })
         dns = dns[dns["query"] != ""].sort_values("ts", ignore_index=True)
     else:
-        dns = pd.DataFrame(columns=["ts", "src_ip", "query", "qtype", "resp_size", "label", "attack_id", "rcode"])
+        dns = pd.DataFrame(columns=["ts", "src_ip", "query", "qtype", "resp_size", "label", "attack_id", "rcode", "answers"])
 
     auth = pd.DataFrame(columns=AUTH_COLUMNS)
     # The monitored machine is the address that takes part in the most connections.
@@ -93,7 +101,8 @@ def load(capture_dir: str | Path) -> LabData:
     hosts = pd.DataFrame({"ip": internal, "hostname": [f"host-{ip}" for ip in internal], "role": "workstation"})
     info = describe(d)
     meta = {**info, "start_ts": float(flows.ts.min()), "days": float((flows.ts.max() - flows.ts.min()) / 86400),
-            "baseline_days": 0, "home_hosts": [home], "timezone": "UTC", "source": "Stratosphere Laboratory, CTU Prague"}
+            "baseline_days": 0, "home_hosts": [home], "timezone": "UTC", "source": "Stratosphere Laboratory, CTU Prague",
+            "network_description": NETWORK_DESCRIPTION}
     return LabData(flows, auth, dns, [], hosts, meta)
 
 

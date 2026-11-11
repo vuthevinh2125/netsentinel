@@ -4,6 +4,7 @@
   compare     score rules / model / beaconing / hybrid on several seeds
   agent-eval  grade an analyst (playbook, or Claude if ANTHROPIC_API_KEY is set)
   real-eval   run the detectors on real labelled captures (Stratosphere Lab, CTU Prague)
+  triage-eval let an analyst triage every alert on the real captures, graded by the lab's labels
 """
 from __future__ import annotations
 
@@ -108,6 +109,13 @@ def main(argv=None) -> int:
     rv.add_argument("--data", default="data/stratosphere", help="folder from scripts/fetch_stratosphere.sh")
     rv.add_argument("--iot23", default=None, help="IoT-23 folder (scripts/fetch_iot23.sh) for the blind test")
     rv.add_argument("--out", default="docs/data/real.json")
+    tr = sub.add_parser("triage-eval", help="grade an analyst's alert triage on real labelled captures")
+    tr.add_argument("--data", default="data/stratosphere")
+    tr.add_argument("--iot23", default=None)
+    tr.add_argument("--analyst", choices=["auto", "playbook", "claude", "escalate-all"], default="auto")
+    tr.add_argument("--sample", type=int, default=None, help="at most N attacks and N false alarms (cost control)")
+    tr.add_argument("--language", choices=["en", "vi"], default="en")
+    tr.add_argument("--out", default="docs/data/triage.json")
     a = p.parse_args(argv)
 
     if a.cmd == "run":
@@ -142,6 +150,26 @@ def main(argv=None) -> int:
             print("\nBlind test, IoT-23:")
             print(realeval.markdown(res["blind"], unit="Infected devices"))
         print(f"-> {out}")
+    elif a.cmd == "triage-eval":
+        from .agent import triage
+        from .datasets import iot23, stratosphere
+
+        def items():
+            for c in stratosphere.captures(a.data):
+                yield stratosphere.load(c)
+            if a.iot23:
+                for path, n in iot23.captures(a.iot23):
+                    yield iot23.load(path, n)
+        cases = triage.build_cases(items(), sample_per_class=a.sample)
+        an = triage.EscalateAll() if a.analyst == "escalate-all" else _analyst(a.analyst)
+        print(f"{len(cases)} alerts ({sum(c['malicious'] for c in cases)} attacks, "
+              f"{sum(not c['malicious'] for c in cases)} false alarms), analyst={an.name}", flush=True)
+        res = triage.run(an, cases, a.language, verbose=True)
+        out = Path(a.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(res, ensure_ascii=False, indent=1, default=_py), encoding="utf-8")
+        print(f"false alarms closed: {res['noise_closed']:.0%}   real attacks wrongly closed: {res['attacks_closed']:.0%}   "
+              f"queue {res['cases']} -> {res['analyst_queue_after_triage']}   -> {out}")
     return 0
 
 

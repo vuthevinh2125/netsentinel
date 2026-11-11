@@ -77,6 +77,27 @@ bash scripts/fetch_iot23.sh                   # ~260 MB into data/iot23
 python -m netsentinel real-eval --iot23 data/iot23
 ```
 
+### AI triage on real alerts
+
+Detection is half the job; the other half is the queue. On the real captures the detectors raise **386 alerts: 293 real attacks and 93 false alarms** (Windows captures plus IoT-23). `triage-eval` hands every alert, one at a time, to an analyst with the same read-only tools as in the lab, plus `destination_context` (DNS names, how many hosts talk to a peer, ports, connection rhythm, unanswered attempts). The lab's flow labels, which the analyst never sees, grade the verdict:
+
+- **false alarms closed** — noise removed from the human queue (higher is better)
+- **real attacks wrongly closed** — the number that must stay near zero
+
+| Analyst | False alarms closed | Real attacks wrongly closed | Queue for humans |
+|---|---|---|---|
+| Escalate everything (no triage) | 0% | 0% | 386 |
+| Playbook analyst (written for the lab) | 0% | 0% | 386 |
+| Claude | run it: see below | | |
+
+The playbook's rules only recognise the lab's two benign patterns, so on real traffic it closes nothing. That is the gap a model has to fill, and the eval is built so it cannot fill it by closing everything: one wrongly closed attack costs more than many escalated false alarms. These captures carry almost no DNS answers, so the analyst has to judge mostly from rhythm, ports and volume.
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...                       # your key, never committed
+python -m netsentinel triage-eval --analyst claude --sample 30   # 30 attacks + 30 false alarms, a few dollars
+python -m netsentinel triage-eval --analyst claude --iot23 data/iot23   # everything
+```
+
 ## How it works
 
 ```
@@ -92,14 +113,14 @@ flows · logins · DNS ───────────────────
 | Anomaly model | Each host is compared with **its own** baseline (median / MAD robust z-scores on structural counts: distinct ports, unanswered probes, internal hosts touched, SMB peers, new external destinations, failed logins, long random DNS names), then scored by an Isolation Forest. An alert needs both an unusual score and a ≥6σ shift, so it can always say *why*. | `netsentinel/detect.py` |
 | Beaconing | Many small connections to a rare external host with low jitter in the inter-arrival times. Behaviour that already existed during the baseline is kept out of attack chains. | `netsentinel/detect.py` |
 | Incidents | Alerts are joined when they share a source, or when a later alert starts from a host an earlier alert touched and that host had no earlier alerts (a pivot). The phished workstation → database → exfiltration story becomes one incident. | `netsentinel/detect.py` |
-| AI analyst | A Claude tool-use loop with six read-only tools (`get_incident`, `host_profile`, `query_flows`, `auth_events`, `dns_queries`, `lookup_mitre`) and a structured `submit_report`. A deterministic playbook analyst uses the same tools offline, so the pipeline works without an API key and gives a baseline to compare the LLM against. | `netsentinel/agent/` |
+| AI analyst | A Claude tool-use loop with seven read-only tools (`get_incident`, `host_profile`, `query_flows`, `auth_events`, `dns_queries`, `destination_context`, `lookup_mitre`) and a structured `submit_report`. A deterministic playbook analyst uses the same tools offline, so the pipeline works without an API key and gives a baseline to compare the LLM against. | `netsentinel/agent/` |
 | Evaluation | Attack-level recall, alert precision and false alerts per day across seeds; seven checks per AI report. | `netsentinel/evaluate.py`, `netsentinel/agent/evals.py` |
 
 ## Run it
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q                         # 22 tests
+python -m pytest -q                         # 23 tests
 python -m netsentinel compare               # the table above
 python -m netsentinel run --seed 11         # new network, writes docs/data/demo.json
 python -m netsentinel agent-eval            # grade the analyst

@@ -15,11 +15,13 @@ from .. import mitre
 from ..features import is_internal
 from .tools import TOOL_SCHEMAS, Workspace, fmt
 
-SYSTEM_PROMPT = """You are a tier-2 SOC analyst investigating one incident raised by NetSentinel, a detection system for a small company network (10.10.1.0/24 workstations, 10.10.2.0/24 servers, 10.10.3.0/24 IoT). Local time is UTC+7.
+LAB_NETWORK = "a small company network (10.10.1.0/24 workstations, 10.10.2.0/24 servers, 10.10.3.0/24 IoT). Local time is UTC+7"
+
+SYSTEM_PROMPT = """You are a tier-2 SOC analyst investigating one incident raised by NetSentinel, a detection system watching {network}.
 
 Investigate with the tools before you conclude:
 1. Call get_incident first.
-2. Check the source host's baseline with host_profile, and pull the flows, logins or DNS queries that prove or disprove each alert.
+2. Check the source host with host_profile, look up remote peers with destination_context (their DNS names and connection rhythm), and pull the flows, logins or DNS queries that prove or disprove each alert.
 3. Call lookup_mitre for every technique you report.
 4. Decide a verdict. Detection systems raise false alarms: regular traffic that already existed during the baseline, or an admin doing admin work from their usual workstation in office hours, is usually benign. New behaviour, rare destinations, stolen accounts and success after brute force are not.
 5. Finish by calling submit_report exactly once. Name concrete IPs, accounts and domains in the summary and actions. Put containment actions first.
@@ -87,7 +89,7 @@ class ClaudeAnalyst:
         messages = [{"role": "user", "content": f"Investigate incident {incident_id} and submit your report."}]
         trace: list[dict] = []
         for turn in range(self.max_turns):
-            resp = self.transport({"model": self.model, "max_tokens": 4096, "system": SYSTEM_PROMPT.format(language=lang),
+            resp = self.transport({"model": self.model, "max_tokens": 4096, "system": SYSTEM_PROMPT.format(language=lang, network=ws.data.meta.get("network_description", LAB_NETWORK)),
                                    "tools": TOOL_SCHEMAS, "messages": list(messages)})
             content = resp.get("content", [])
             messages.append({"role": "assistant", "content": content})
@@ -195,7 +197,7 @@ class PlaybookAnalyst:
             trace.append({"step": len(trace) + 1, "tool": tool, "input": args, "output": _preview(out)})
             return out
 
-        inc = call("get_incident", incident_id=incident_id)
+        inc = call("get_incident", incident_id=incident_id)   # also selects this capture's home network
         alerts = inc["alerts"]
         src = alerts[0]["src_ip"]
         prof = call("host_profile", ip=src) if is_internal(src) else {"hostname": "external", "role": "internet host"}

@@ -69,3 +69,29 @@ def test_zeek_space_separated_labels(tmp_path):
     p.write_text("\n".join(out) + "\n")
     df = read_zeek(p)
     assert len(df) == 140 and set(df.label) == {"Malicious", "Benign"}
+
+
+def test_triage_eval_with_scripted_claude():
+    """The Claude loop runs on a real-data case: tools resolve, and closing a real attack is counted against it."""
+    from netsentinel.agent import triage
+    from netsentinel.agent.analyst import ClaudeAnalyst
+
+    cases = triage.build_cases([stratosphere.load(FIX / "000-zeek-malicious")])
+    assert len(cases) == 1 and cases[0]["malicious"] is True
+
+    def transport(payload):
+        msgs = payload["messages"]
+        assert "real capture" in payload["system"]
+        if len(msgs) == 1:
+            iid = cases[0]["incident_id"]
+            return {"content": [{"type": "tool_use", "id": "t1", "name": "get_incident", "input": {"incident_id": iid}},
+                                {"type": "tool_use", "id": "t2", "name": "destination_context", "input": {"ip": "93.184.216.34"}}]}
+        ctx = [c for c in msgs[-1]["content"] if c["tool_use_id"] == "t2"][0]["content"]
+        assert '"median_interval_s": 60' in ctx      # the rhythm the analyst needs is there
+        return {"content": [{"type": "tool_use", "id": "t3", "name": "submit_report",
+                             "input": {"verdict": "benign", "confidence": 0.6, "severity": "low",
+                                       "summary": "Looks like telemetry.", "actions": ["Close"]}}]}
+
+    res = triage.run(ClaudeAnalyst(transport=transport), cases)
+    assert res["attacks_closed"] == 1.0 and res["noise_closed"] is None
+    assert res["rows"][0]["tools_used"] == 3

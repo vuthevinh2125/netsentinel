@@ -11,7 +11,7 @@ import pandas as pd
 
 from .. import mitre
 from ..detect import DetectionResult
-from ..features import internal_mask, is_internal
+from ..features import internal_mask, is_internal, set_home_hosts
 from ..simulate import LabData
 
 TZ = dt.timezone(dt.timedelta(hours=7))
@@ -48,13 +48,19 @@ class Workspace:
     def host_profile(self, ip: str) -> dict:
         info = self.hosts.loc[ip].to_dict() if ip in self.hosts.index else {"hostname": "external", "role": "internet host"}
         f = self.data.flows
-        base = f[(f.src_ip == ip) & (f.ts < self.baseline_end)]
+        days = float(self.data.meta.get("baseline_days") or 0)
+        no_baseline = days <= 0
+        # Real captures have no clean baseline: describe the whole capture instead, and say so.
+        base = f[f.src_ip == ip] if no_baseline else f[(f.src_ip == ip) & (f.ts < self.baseline_end)]
+        if no_baseline:
+            days = max(1e-9, (f.ts.max() - f.ts.min()) / 86400)
         a = self.data.auth
-        accounts = sorted(a[(a.src_ip == ip) & (a.ts < self.baseline_end)].user.unique().tolist())
+        accounts = sorted(a[(a.src_ip == ip) & (no_baseline | (a.ts < self.baseline_end))].user.unique().tolist())
         return {
             "ip": ip, **info,
+            "note": "No clean baseline exists: these figures cover the whole capture, including any malicious activity." if no_baseline else "",
             "baseline": {
-                "connections_per_day": round(len(base) / self.data.meta["baseline_days"]),
+                "connections_per_day": round(len(base) / days),
                 "usual_ports": base.dst_port.value_counts().head(6).index.tolist(),
                 "internal_peers": sorted(base.loc[internal_mask(base.dst_ip), "dst_ip"].unique().tolist())[:10],
                 "external_destinations": int(base.loc[~internal_mask(base.dst_ip), "dst_ip"].nunique()),
@@ -103,11 +109,44 @@ class Workspace:
         longest = q.loc[q["query"].str.len().sort_values(ascending=False).index[:3], "query"].tolist() if len(q) else []
         return {"ip": ip, "queries": int(len(q)), "top_domains": top.to_dict(), "longest_queries": longest}
 
+    def destination_context(self, ip: str, src: str | None = None) -> dict:
+        """What an analyst checks about a peer: its DNS names, who talks to it, on which ports, how regularly."""
+        f = self.data.flows
+        q = f[f.dst_ip == ip]
+        if src:
+            q = q[q.src_ip == src]
+        names: list[str] = []
+        d = self.data.dns
+        if "answers" in d.columns and len(d):
+            hit = d[d["answers"].str.contains(ip, regex=False, na=False)]
+            names = hit["query"].value_counts().head(5).index.tolist()
+        out = {"ip": ip, "dns_names": names, "connections": int(len(q))}
+        if q.empty:
+            return out
+        gaps = q.ts.sort_values().diff().dropna()
+        gaps = gaps[gaps > 0]
+        med = float(gaps.median()) if len(gaps) else None
+        jitter = float((gaps - med).abs().median() / med) if med else None
+        out.update({
+            "internal_sources": int(q.loc[internal_mask(q.src_ip), "src_ip"].nunique()),
+            "ports": q.dst_port.value_counts().head(5).to_dict(),
+            "protocols": q.proto.value_counts().head(3).to_dict(),
+            "median_interval_s": round(med, 1) if med else None,
+            "interval_jitter": round(jitter, 3) if jitter is not None else None,
+            "median_bytes_out": int(q.bytes_out.median()), "median_bytes_in": int(q.bytes_in.median()),
+            "share_unanswered": round(float(((q.bytes_in == 0) & (q.packets <= 3)).mean()), 3),
+            "first": fmt(q.ts.min()), "last": fmt(q.ts.max()),
+            "hours_active": int(((q.ts - q.ts.min()) // 3600).nunique()),
+        })
+        return out
+
     def lookup_mitre(self, technique_id: str) -> dict:
         return mitre.lookup(technique_id)
 
     # tool registry ---------------------------------------------------------
     def call(self, name: str, args: dict) -> dict:
+        # The home network is per capture; set it before every call so workspaces can be mixed.
+        set_home_hosts(self.data.meta.get("home_hosts", ()))
         fn = TOOL_FUNCS.get(name)
         if fn is None:
             return {"error": f"Unknown tool {name}"}
@@ -124,6 +163,7 @@ TOOL_FUNCS = {
     "auth_events": Workspace.auth_events,
     "dns_queries": Workspace.dns_queries,
     "lookup_mitre": Workspace.lookup_mitre,
+    "destination_context": Workspace.destination_context,
 }
 
 _TIME = {"type": "number", "description": "Unix timestamp (seconds). Optional."}
@@ -141,6 +181,8 @@ TOOL_SCHEMAS = [
      "input_schema": {"type": "object", "properties": {"ip": {"type": "string"}, "start": _TIME, "end": _TIME}, "required": ["ip"]}},
     {"name": "dns_queries", "description": "Summarise DNS queries made by a host: top domains and the longest names.",
      "input_schema": {"type": "object", "properties": {"ip": {"type": "string"}, "start": _TIME, "end": _TIME}, "required": ["ip"]}},
+    {"name": "destination_context", "description": "Context on a remote peer: DNS names that resolved to it, how many internal hosts talk to it, ports, protocols, connection rhythm (median interval, jitter), typical bytes, share of unanswered attempts, active hours. Pass src to limit to one source host.",
+     "input_schema": {"type": "object", "properties": {"ip": {"type": "string"}, "src": {"type": "string"}}, "required": ["ip"]}},
     {"name": "lookup_mitre", "description": "Look up a MITRE ATT&CK technique: tactic, what it means, how to respond.",
      "input_schema": {"type": "object", "properties": {"technique_id": {"type": "string"}}, "required": ["technique_id"]}},
     {"name": "submit_report", "description": "Finish the investigation with a structured incident report. Call exactly once, last.",
