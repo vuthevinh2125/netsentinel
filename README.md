@@ -162,7 +162,7 @@ flows · logins · DNS ───────────────────
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q                         # 24 tests
+python -m pytest -q                         # 33 tests
 python -m netsentinel compare               # the table above
 python -m netsentinel run --seed 11         # new network, writes docs/data/demo.json
 python -m netsentinel agent-eval            # grade the analyst
