@@ -44,13 +44,13 @@ def single_alert_result(result: detect.DetectionResult) -> detect.DetectionResul
     return r
 
 
-def build_cases(loader_items, sample_per_class: int | None = None, seed: int = 7) -> list[dict]:
+def build_cases(loader_items, sample_per_class: int | None = None, seed: int = 7, rag: bool = False) -> list[dict]:
     """loader_items: iterable of LabData. Returns cases with their workspace and hidden label."""
     cases = []
     for data in loader_items:
         res = detect.run(data)
         truth = {r["alert_id"]: r for r in realeval.score_capture(data, res)["alerts_detail"]}
-        ws = Workspace(data, single_alert_result(res))
+        ws = Workspace(data, single_alert_result(res), rag=rag)
         for inc in ws.result.incidents:
             t = truth[inc.alert_ids[0]]
             cases.append({"ws": ws, "incident_id": inc.incident_id, "capture": data.meta.get("capture"),

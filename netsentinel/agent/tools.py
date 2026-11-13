@@ -22,7 +22,8 @@ def fmt(ts: float) -> str:
 
 
 class Workspace:
-    def __init__(self, data: LabData, result: DetectionResult):
+    def __init__(self, data: LabData, result: DetectionResult, rag: bool = False):
+        self.rag = rag                     # expose search_knowledge (MITRE ATT&CK + Sigma) to the analyst
         self.data = data
         self.result = result
         self.alerts = {a.alert_id: a for a in result.alerts}
@@ -199,6 +200,20 @@ class Workspace:
             out["data_notes"] = notes
         return out
 
+    def search_knowledge(self, query: str, k: int = 4, kind: str = "any") -> dict:
+        """Search MITRE ATT&CK techniques, malware and tools, and Sigma network rules. Every hit carries its source."""
+        from ..knowledge.search import default_kb, snippet
+
+        kinds = {"technique": ("technique",), "malware": ("malware", "tool"), "sigma": ("sigma",)}.get(kind)
+        k = max(1, min(int(k or 4), 6))
+        hits = default_kb().search(query, k, kinds)
+        return {"query": query, "results": [
+            {"id": d["id"], "kind": d["kind"], "title": d["title"], "source": d["source"], "url": d["url"],
+             "score": score, "excerpt": snippet(d, query)} for score, d in hits]}
+
+    def tool_schemas(self) -> list[dict]:
+        return [t for t in TOOL_SCHEMAS if self.rag or t["name"] != "search_knowledge"]
+
     def lookup_mitre(self, technique_id: str) -> dict:
         return mitre.lookup(technique_id)
 
@@ -224,6 +239,7 @@ TOOL_FUNCS = {
     "lookup_mitre": Workspace.lookup_mitre,
     "destination_context": Workspace.destination_context,
     "host_peer_summary": Workspace.host_peer_summary,
+    "search_knowledge": Workspace.search_knowledge,
 }
 
 _TIME = {"type": "number", "description": "Unix timestamp (seconds). Optional."}
@@ -245,6 +261,10 @@ TOOL_SCHEMAS = [
      "input_schema": {"type": "object", "properties": {"ip": {"type": "string"}, "src": {"type": "string"}}, "required": ["ip"]}},
     {"name": "host_peer_summary", "description": "The whole picture of a host's traffic to the Internet: how many external peers, how many remote ports, share of UDP and of high ports, the most used remote ports, and how many peers it contacts on a regular rhythm. Use it to tell one rare destination apart from an application that talks to hundreds of peers. Includes notes on what this dataset cannot show.",
      "input_schema": {"type": "object", "properties": {"ip": {"type": "string"}}, "required": ["ip"]}},
+    {"name": "search_knowledge", "description": "Search a local knowledge base of MITRE ATT&CK techniques (with how they are detected), malware and tool profiles (what ports, protocols and behaviour they use), and Sigma network detection rules (including their known false positives). Describe what you observe in plain words, e.g. 'regular HTTPS check-ins every 9 seconds to one IP on port 449' or 'thousands of UDP peers on port 6881'. Cite the ids you rely on in your report.",
+     "input_schema": {"type": "object", "properties": {"query": {"type": "string"}, "k": {"type": "integer"},
+                                                       "kind": {"type": "string", "enum": ["any", "technique", "malware", "sigma"]}},
+                      "required": ["query"]}},
     {"name": "lookup_mitre", "description": "Look up a MITRE ATT&CK technique: tactic, what it means, how to respond.",
      "input_schema": {"type": "object", "properties": {"technique_id": {"type": "string"}}, "required": ["technique_id"]}},
     {"name": "submit_report", "description": "Finish the investigation with a structured incident report. Call exactly once, last.",

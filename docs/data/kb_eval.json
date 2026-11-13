@@ -1,0 +1,146 @@
+{
+ "lab_plain": {
+  "alerts": 61,
+  "detectors": 7,
+  "family@1": 0.41,
+  "family@5": 0.59,
+  "tactic@5": 0.918,
+  "macro_family@5": 0.646,
+  "macro_tactic@5": 0.966,
+  "by_detector": {
+   "beaconing": {
+    "alerts": 10,
+    "family@5": 0.0,
+    "tactic@5": 1.0
+   },
+   "rule:port-scan": {
+    "alerts": 5,
+    "family@5": 1.0,
+    "tactic@5": 1.0
+   },
+   "anomaly-model": {
+    "alerts": 21,
+    "family@5": 0.524,
+    "tactic@5": 0.762
+   },
+   "rule:smb-fan-out": {
+    "alerts": 10,
+    "family@5": 1.0,
+    "tactic@5": 1.0
+   },
+   "rule:brute-force": {
+    "alerts": 5,
+    "family@5": 1.0,
+    "tactic@5": 1.0
+   },
+   "rule:dns-tunnel": {
+    "alerts": 5,
+    "family@5": 1.0,
+    "tactic@5": 1.0
+   },
+   "rule:large-upload": {
+    "alerts": 5,
+    "family@5": 0.0,
+    "tactic@5": 1.0
+   }
+  }
+ },
+ "lab_thesaurus": {
+  "alerts": 61,
+  "detectors": 7,
+  "family@1": 0.59,
+  "family@5": 0.836,
+  "tactic@5": 1.0,
+  "macro_family@5": 0.786,
+  "macro_tactic@5": 1.0,
+  "by_detector": {
+   "beaconing": {
+    "alerts": 10,
+    "family@5": 0.5,
+    "tactic@5": 1.0
+   },
+   "rule:port-scan": {
+    "alerts": 5,
+    "family@5": 1.0,
+    "tactic@5": 1.0
+   },
+   "anomaly-model": {
+    "alerts": 21,
+    "family@5": 1.0,
+    "tactic@5": 1.0
+   },
+   "rule:smb-fan-out": {
+    "alerts": 10,
+    "family@5": 1.0,
+    "tactic@5": 1.0
+   },
+   "rule:brute-force": {
+    "alerts": 5,
+    "family@5": 1.0,
+    "tactic@5": 1.0
+   },
+   "rule:dns-tunnel": {
+    "alerts": 5,
+    "family@5": 1.0,
+    "tactic@5": 1.0
+   },
+   "rule:large-upload": {
+    "alerts": 5,
+    "family@5": 0.0,
+    "tactic@5": 1.0
+   }
+  }
+ },
+ "real_plain": {
+  "alerts": 386,
+  "detectors": 3,
+  "family@1": 0.098,
+  "family@5": 0.098,
+  "tactic@5": 0.997,
+  "macro_family@5": 0.333,
+  "macro_tactic@5": 0.97,
+  "by_detector": {
+   "beaconing": {
+    "alerts": 337,
+    "family@5": 0.0,
+    "tactic@5": 1.0
+   },
+   "rule:port-scan": {
+    "alerts": 38,
+    "family@5": 1.0,
+    "tactic@5": 1.0
+   },
+   "rule:large-upload": {
+    "alerts": 11,
+    "family@5": 0.0,
+    "tactic@5": 0.909
+   }
+  }
+ },
+ "real_thesaurus": {
+  "alerts": 386,
+  "detectors": 3,
+  "family@1": 0.098,
+  "family@5": 0.972,
+  "tactic@5": 1.0,
+  "macro_family@5": 0.667,
+  "macro_tactic@5": 1.0,
+  "by_detector": {
+   "beaconing": {
+    "alerts": 337,
+    "family@5": 1.0,
+    "tactic@5": 1.0
+   },
+   "rule:port-scan": {
+    "alerts": 38,
+    "family@5": 1.0,
+    "tactic@5": 1.0
+   },
+   "rule:large-upload": {
+    "alerts": 11,
+    "family@5": 0.0,
+    "tactic@5": 1.0
+   }
+  }
+ }
+}

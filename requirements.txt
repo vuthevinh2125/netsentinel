@@ -4,3 +4,4 @@ scikit-learn>=1.4
 requests>=2.31
 flask>=3.0        # only for the local live dashboard (web/app.py)
 pytest>=8.0       # tests
+pyyaml>=6  # only to rebuild the knowledge base

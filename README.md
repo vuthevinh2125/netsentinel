@@ -116,6 +116,29 @@ export NETSENTINEL_OPENAI_URL=http://localhost:11434/v1 NETSENTINEL_OPENAI_KEY=o
 python -m netsentinel triage-eval --analyst openai --sample 30
 ```
 
+### Knowledge for the analyst (RAG)
+
+An analyst looking at "regular HTTPS every 9 seconds to one IP on port 449" checks what that usually means. `search_knowledge` gives the AI the same reference shelf, offline: **1,602 documents** built from the official **MITRE ATT&CK Enterprise v20.1** STIX data (706 techniques with MITRE's own detection analytics, 842 malware and tool profiles with their observed behaviour, e.g. TrickBot's port 449) and **54 Sigma network rules**, whose `falsepositives` field lists the benign causes that matter for triage. Every hit returns its id, source and link, and the analyst is told to cite what it used.
+
+Search is BM25 rather than embeddings: it needs no model download, answers in a few milliseconds and every hit can be explained by the words it matched. Retrieval is measured, not assumed. For every alert the query is built only from what the analyst sees (title and evidence, with any technique id removed), and a hit means the alert's technique is in the top 5. Averaged per detector so one chatty detector cannot dominate:
+
+| Alerts | Right technique family in top 5 | Right tactic in top 5 |
+|---|---|---|
+| Lab, plain BM25 | 65% | 97% |
+| Lab, + SOC thesaurus | **79%** | **100%** |
+| Real captures, plain BM25 | 33% | 97% |
+| Real captures, + SOC thesaurus | **67%** | **100%** |
+
+The gap was vocabulary: alerts say "call-home", "jitter" and "upload", ATT&CK says "command and control" and "exfiltration". A 20-entry thesaurus of standard SOC terms, applied to every query alike and only ever adding words, closes most of it. What still misses: a large upload retrieves Exfiltration techniques such as T1030 and T1020 rather than the detector's T1048, and a benign heartbeat retrieves other Command and Control techniques, so the right tactic always comes back even when the exact technique does not.
+
+```bash
+python -m netsentinel kb-eval --data data/stratosphere --iot23 data/iot23   # the table above
+python -m netsentinel triage-eval --analyst openai --sample 30 --rag        # triage with the knowledge base
+bash scripts/build_knowledge.sh                                             # rebuild from the latest ATT&CK and Sigma
+```
+
+Whether retrieval actually improves triage is the next measurement: the same 60 real alerts, with and without `--rag`.
+
 ## How it works
 
 ```
@@ -131,6 +154,7 @@ flows · logins · DNS ───────────────────
 | Anomaly model | Each host is compared with **its own** baseline (median / MAD robust z-scores on structural counts: distinct ports, unanswered probes, internal hosts touched, SMB peers, new external destinations, failed logins, long random DNS names), then scored by an Isolation Forest. An alert needs both an unusual score and a ≥6σ shift, so it can always say *why*. | `netsentinel/detect.py` |
 | Beaconing | Many small connections to a rare external host with low jitter in the inter-arrival times. Behaviour that already existed during the baseline is kept out of attack chains. | `netsentinel/detect.py` |
 | Incidents | Alerts are joined when they share a source, or when a later alert starts from a host an earlier alert touched and that host had no earlier alerts (a pivot). The phished workstation → database → exfiltration story becomes one incident. | `netsentinel/detect.py` |
+| Knowledge (RAG) | MITRE ATT&CK v20.1 and Sigma network rules as 1,602 cited documents, BM25 search with a SOC thesaurus, retrieval graded on every alert. | `netsentinel/knowledge/` |
 | AI analyst | A Claude tool-use loop with seven read-only tools (`get_incident`, `host_profile`, `query_flows`, `auth_events`, `dns_queries`, `destination_context`, `lookup_mitre`) and a structured `submit_report`. A deterministic playbook analyst uses the same tools offline, so the pipeline works without an API key and gives a baseline to compare the LLM against. | `netsentinel/agent/` |
 | Evaluation | Attack-level recall, alert precision and false alerts per day across seeds; seven checks per AI report. | `netsentinel/evaluate.py`, `netsentinel/agent/evals.py` |
 
@@ -161,6 +185,7 @@ The same seven checks grade both analysts, so the comparison is like for like.
 - The Windows real-data numbers come after the two changes described above, which were made while looking at that dataset, so they are development results. The IoT-23 numbers are the blind test.
 - The playbook analyst is written for these seven attack types; its perfect score shows the harness works, not that it generalises. Generalising is the LLM analyst's job, and the eval exists to measure it.
 - No organisation's private logs were used at any point.
+- MITRE ATT&CK® content © The MITRE Corporation, reproduced with permission under the ATT&CK terms of use. Sigma rules © their authors, Detection Rule License 1.1; each document links back to its source.
 
 ## Tiếng Việt
 

@@ -5,6 +5,7 @@
   agent-eval  grade an analyst (playbook, or Claude if ANTHROPIC_API_KEY is set)
   real-eval   run the detectors on real labelled captures (Stratosphere Lab, CTU Prague)
   triage-eval let an analyst triage every alert on the real captures, graded by the lab's labels
+  kb-eval     does the knowledge search find the right ATT&CK technique for each alert
 """
 from __future__ import annotations
 
@@ -121,6 +122,11 @@ def main(argv=None) -> int:
     tr.add_argument("--language", choices=["en", "vi"], default="en")
     tr.add_argument("--out", default="docs/data/triage.json")
     tr.add_argument("--resume", action="store_true", help="skip cases already in --out and continue")
+    tr.add_argument("--rag", action="store_true", help="give the analyst search_knowledge (MITRE ATT&CK + Sigma)")
+    kv = sub.add_parser("kb-eval", help="retrieval quality of the knowledge base on lab (and real) alerts")
+    kv.add_argument("--data", default=None, help="Stratosphere folder, optional")
+    kv.add_argument("--iot23", default=None)
+    kv.add_argument("--out", default="docs/data/kb_eval.json")
     a = p.parse_args(argv)
 
     if a.cmd == "run":
@@ -155,6 +161,32 @@ def main(argv=None) -> int:
             print("\nBlind test, IoT-23:")
             print(realeval.markdown(res["blind"], unit="Infected devices"))
         print(f"-> {out}")
+    elif a.cmd == "kb-eval":
+        from .knowledge.evaluate import evaluate
+        sets = {"lab": []}
+        for seed in (7, 11, 23, 42, 99):
+            d = generate(seed=seed)
+            sets["lab"] += [x for x in detect.run(d).alerts if not x.suppressed]
+        if a.data or a.iot23:
+            from .datasets import iot23, stratosphere
+            sets["real"] = []
+            for c in (stratosphere.captures(a.data) if a.data else []):
+                d = stratosphere.load(c)
+                sets["real"] += [x for x in detect.run(d).alerts if not x.suppressed]
+            for path, n in (iot23.captures(a.iot23) if a.iot23 else []):
+                d = iot23.load(path, n)
+                sets["real"] += [x for x in detect.run(d).alerts if not x.suppressed]
+        res = {}
+        for name, alerts in sets.items():
+            for th in (False, True):
+                r = evaluate(alerts, use_thesaurus=th)
+                r.pop("rows")
+                res[f"{name}_{'thesaurus' if th else 'plain'}"] = r
+                print(f"{name:4s} {'thesaurus' if th else 'plain':9s} alerts={r['alerts']:4d}  "
+                      f"technique family in top 5 (macro) {r['macro_family@5']:.0%}  right tactic in top 5 (macro) {r['macro_tactic@5']:.0%}")
+        out = Path(a.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(res, indent=1), encoding="utf-8")
     elif a.cmd == "triage-eval":
         from .agent import triage
         from .datasets import iot23, stratosphere
@@ -165,7 +197,7 @@ def main(argv=None) -> int:
             if a.iot23:
                 for path, n in iot23.captures(a.iot23):
                     yield iot23.load(path, n)
-        cases = triage.build_cases(items(), sample_per_class=a.sample)
+        cases = triage.build_cases(items(), sample_per_class=a.sample, rag=a.rag)
         an = triage.EscalateAll() if a.analyst == "escalate-all" else _analyst(a.analyst)
         if a.analyst == "openai":
             missing = [v for v in ("NETSENTINEL_OPENAI_URL", "NETSENTINEL_OPENAI_KEY", "NETSENTINEL_MODEL") if not os.environ.get(v)]
@@ -173,7 +205,7 @@ def main(argv=None) -> int:
                 print("Missing: " + ", ".join(missing) + ". Set them with export before running.")
                 return 2
         print(f"{len(cases)} alerts ({sum(c['malicious'] for c in cases)} attacks, "
-              f"{sum(not c['malicious'] for c in cases)} false alarms), analyst={an.name}", flush=True)
+              f"{sum(not c['malicious'] for c in cases)} false alarms), analyst={an.name}, rag={a.rag}", flush=True)
         out = Path(a.out)
         out.parent.mkdir(parents=True, exist_ok=True)
         done = {}

@@ -23,9 +23,10 @@ Investigate with the tools before you conclude:
 1. Call get_incident first.
 2. Check the source host with host_profile, look up remote peers with destination_context (their DNS names and connection rhythm), and pull the flows, logins or DNS queries that prove or disprove each alert.
 3. Call lookup_mitre for every technique you report.
-4. Read any data_notes a tool returns: missing data is only evidence when the data could have shown it. Weigh the host's whole picture (host_peer_summary) before calling one destination rare.
-5. Decide a verdict. Detection systems raise false alarms: regular traffic that already existed during the baseline, or an admin doing admin work from their usual workstation in office hours, is usually benign. New behaviour, rare destinations, stolen accounts and success after brute force are not.
-6. Finish by calling submit_report exactly once. Name concrete IPs, accounts and domains in the summary and actions. Put containment actions first.
+4. If search_knowledge is available, use it to check what the observed behaviour usually means: which techniques and malware match it, and which benign causes Sigma lists as false positives. Cite the ids you use.
+5. Read any data_notes a tool returns: missing data is only evidence when the data could have shown it. Weigh the host's whole picture (host_peer_summary) before calling one destination rare.
+6. Decide a verdict. Detection systems raise false alarms: regular traffic that already existed during the baseline, or an admin doing admin work from their usual workstation in office hours, is usually benign. New behaviour, rare destinations, stolen accounts and success after brute force are not.
+7. Finish by calling submit_report exactly once. Name concrete IPs, accounts and domains in the summary and actions. Put containment actions first.
 
 Write the summary and actions in {language}. Keep technique IDs, IPs, hostnames and account names as they are."""
 
@@ -91,7 +92,7 @@ class ClaudeAnalyst:
         trace: list[dict] = []
         for turn in range(self.max_turns):
             resp = self.transport({"model": self.model, "max_tokens": 4096, "system": SYSTEM_PROMPT.format(language=lang, network=ws.data.meta.get("network_description", LAB_NETWORK)),
-                                   "tools": TOOL_SCHEMAS, "messages": list(messages)})
+                                   "tools": ws.tool_schemas(), "messages": list(messages)})
             content = resp.get("content", [])
             messages.append({"role": "assistant", "content": content})
             uses = [c for c in content if c.get("type") == "tool_use"]
@@ -186,9 +187,9 @@ class OpenAICompatAnalyst:
         raise RuntimeError(f"Still failing after retries ({r.status_code}): {r.text[:300]}")
 
     @staticmethod
-    def _tools() -> list[dict]:
+    def _tools(ws: Workspace) -> list[dict]:
         return [{"type": "function", "function": {"name": t["name"], "description": t["description"],
-                                                   "parameters": t["input_schema"]}} for t in TOOL_SCHEMAS]
+                                                   "parameters": t["input_schema"]}} for t in ws.tool_schemas()]
 
     def investigate(self, ws: Workspace, incident_id: str, language: str = "en") -> Report:
         t0 = time.time()
@@ -199,7 +200,7 @@ class OpenAICompatAnalyst:
         trace: list[dict] = []
         sev = ws.incidents[incident_id].severity
         for _ in range(self.max_turns):
-            payload = {"model": self.model, "messages": list(messages), "tools": self._tools(),
+            payload = {"model": self.model, "messages": list(messages), "tools": self._tools(ws),
                        "tool_choice": "auto", "temperature": 0}
             if self.reasoning:
                 payload["reasoning_effort"] = self.reasoning

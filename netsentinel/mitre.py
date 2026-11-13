@@ -55,5 +55,17 @@ ATTACK = {
 def lookup(technique_id: str) -> dict:
     t = ATTACK.get(technique_id)
     if t is None:
-        return {"technique_id": technique_id, "error": "Not in the local ATT&CK table."}
+        # fall back to the full ATT&CK knowledge base (every Enterprise technique)
+        try:
+            from .knowledge.search import default_kb
+            d = default_kb().by_id.get(technique_id)
+        except Exception:
+            d = None
+        if d is None or d["kind"] != "technique":
+            return {"technique_id": technique_id, "error": "Not a known ATT&CK Enterprise technique."}
+        import re
+        m = re.search(r"Tactics: ([^.]*)\.", d["text"])
+        return {"technique_id": technique_id, "name": d["title"].split(" ", 1)[1],
+                "tactic": (m.group(1) if m else ""), "description": d["text"].split("\n", 2)[1][:600],
+                "source": d["source"], "url": d["url"]}
     return {"technique_id": technique_id, **t, "url": f"https://attack.mitre.org/techniques/{technique_id.replace('.', '/')}/"}
